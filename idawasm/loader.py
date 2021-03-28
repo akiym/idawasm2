@@ -1,6 +1,9 @@
 import os
 import struct
 
+import ida_bytes
+import ida_idaapi
+import ida_lines
 import idaapi
 import idc
 import wasm
@@ -42,13 +45,13 @@ def MakeN(addr, size):
       size (int): the size of the integer, one of 1, 2, 4, or 8.
     """
     if size == 1:
-        idc.MakeByte(addr)
+        ida_bytes.create_data(addr, ida_bytes.FF_BYTE, 1, ida_idaapi.BADADDR)
     elif size == 2:
-        idc.MakeWord(addr)
+        ida_bytes.create_data(addr, ida_bytes.FF_WORD, 2, ida_idaapi.BADADDR)
     elif size == 4:
-        idc.MakeDword(addr)
+        ida_bytes.create_data(addr, ida_bytes.FF_DWORD, 4, ida_idaapi.BADADDR)
     elif size == 8:
-        idc.MakeQword(addr)
+        ida_bytes.create_data(addr, ida_bytes.FF_QWORD, 8, ida_idaapi.BADADDR)
 
 
 def get_section(sections, section_id):
@@ -148,14 +151,14 @@ def load_struc(struc, p, path):
             #     imports:0030                 db 0x76 ;; v
 
             # add line prior to element
-            idc.ExtLinA(p, 0, name)
+            ida_lines.update_extra_cmt(p, ida_lines.E_PREV + 0, name)
 
             # if primitive integer element, set it as such
             if isinstance(field.value, int):
                 MakeN(p, field.size)
 
             # add comment containing human-readable representation
-            idc.MakeComm(p, format_value(name, field.value).encode('utf-8'))
+            idc.set_cmt(p, format_value(name, field.value), 0)
 
             p += field.size
 
@@ -198,9 +201,9 @@ def load_globals_section(section, p):
         #        i32.const    <---- init expression insns
         #        ret
         pinit = pcur + idawasm.common.offset_of(body, 'init')
-        idc.MakeName(pinit, gname)
-        idc.ExtLinA(pinit, 0, gname + '_init:')
-        idc.MakeCode(pinit)
+        idc.set_name(pinit, gname, idc.SN_CHECK)
+        ida_lines.update_extra_cmt(pinit, ida_lines.E_PREV + 0, gname + '_init:')
+        idc.create_insn(pinit)
 
         pcur += idawasm.common.size_of(body)
 
@@ -213,7 +216,7 @@ def load_elements_section(section, p):
     pentries = ppayload + idawasm.common.offset_of(section.data.payload, 'entries')
     pcur = pentries
     for i, body in enumerate(section.data.payload.entries):
-        idc.MakeCode(pcur + idawasm.common.offset_of(body, 'offset'))
+        idc.create_insn(pcur + idawasm.common.offset_of(body, 'offset'))
         pcur += idawasm.common.size_of(body)
 
 
@@ -225,7 +228,7 @@ def load_data_section(section, p):
     pentries = ppayload + idawasm.common.offset_of(section.data.payload, 'entries')
     pcur = pentries
     for i, body in enumerate(section.data.payload.entries):
-        idc.MakeCode(pcur + idawasm.common.offset_of(body, 'offset'))
+        idc.create_insn(pcur + idawasm.common.offset_of(body, 'offset'))
         pcur += idawasm.common.size_of(body)
 
 
@@ -257,7 +260,7 @@ def load_file(f, neflags, format):
 
     # mark the proc type, so IDA can invoke the correct disassembler/processor.
     # this must match `processor.wasm_processor_t.psnames`
-    idaapi.set_processor_type('wasm', idaapi.SETPROC_ALL)
+    idaapi.set_processor_type('wasm', idaapi.SETPROC_LOADER_NON_FATAL)
 
     f.seek(0x0)
     # load the entire file directly at address zero.
@@ -294,10 +297,10 @@ def load_file(f, neflags, format):
         p += slen
 
     # magic
-    idc.MakeDword(0x0)
-    idc.MakeName(0x0, 'WASM_MAGIC')
+    ida_bytes.create_data(0x0, ida_bytes.FF_DWORD, 4, ida_idaapi.BADADDR)
+    idc.set_name(0x0, 'WASM_MAGIC', idc.SN_CHECK)
     # version
-    idc.MakeDword(0x4)
-    idc.MakeName(0x4, 'WASM_VERSION')
+    ida_bytes.create_data(0x4, ida_bytes.FF_DWORD, 4, ida_idaapi.BADADDR)
+    idc.set_name(0x4, 'WASM_VERSION', idc.SN_CHECK)
 
     return 1
