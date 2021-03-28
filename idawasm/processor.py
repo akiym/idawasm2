@@ -923,7 +923,6 @@ class wasm_processor_t(idaapi.processor_t):
                     ctx.out_register('$global%d' % op.value)
                     return True
 
-
             elif wtype == WASM_FUNC_INDEX:
                 f = self.functions[op.value]
                 if 'offset' in f:
