@@ -10,7 +10,6 @@ import ida_pro
 import ida_struct
 import ida_ua
 import wasm
-import wasm.opcodes
 
 import idawasm.analysis
 
@@ -54,15 +53,15 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
         returns:
           bool: True if a STORE variant.
         """
-        return op.id in (wasm.opcodes.OP_I32_STORE,
-                         wasm.opcodes.OP_I64_STORE,
-                         wasm.opcodes.OP_F32_STORE,
-                         wasm.opcodes.OP_F64_STORE,
-                         wasm.opcodes.OP_I32_STORE8,
-                         wasm.opcodes.OP_I32_STORE16,
-                         wasm.opcodes.OP_I64_STORE8,
-                         wasm.opcodes.OP_I64_STORE16,
-                         wasm.opcodes.OP_I64_STORE32)
+        return op.id in (wasm.OP_I32_STORE,
+                         wasm.OP_I64_STORE,
+                         wasm.OP_F32_STORE,
+                         wasm.OP_F64_STORE,
+                         wasm.OP_I32_STORE8,
+                         wasm.OP_I32_STORE16,
+                         wasm.OP_I64_STORE8,
+                         wasm.OP_I64_STORE16,
+                         wasm.OP_I64_STORE32)
 
     def get_store_size(self, insn):
         """
@@ -74,15 +73,15 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
         returns:
           str: String identifier for the store size and type, like `i32`.
         """
-        return {wasm.opcodes.OP_I32_STORE: 'i32',
-                wasm.opcodes.OP_I64_STORE: 'i64',
-                wasm.opcodes.OP_F32_STORE: 'f32',
-                wasm.opcodes.OP_F64_STORE: 'f64',
-                wasm.opcodes.OP_I32_STORE8: 'i8',
-                wasm.opcodes.OP_I32_STORE16: 'i16',
-                wasm.opcodes.OP_I64_STORE8: 'i8',
-                wasm.opcodes.OP_I64_STORE16: 'i16',
-                wasm.opcodes.OP_I64_STORE32: 'i32'}[insn.op.id]
+        return {wasm.OP_I32_STORE: 'i32',
+                wasm.OP_I64_STORE: 'i64',
+                wasm.OP_F32_STORE: 'f32',
+                wasm.OP_F64_STORE: 'f64',
+                wasm.OP_I32_STORE8: 'i8',
+                wasm.OP_I32_STORE16: 'i16',
+                wasm.OP_I64_STORE8: 'i8',
+                wasm.OP_I64_STORE16: 'i16',
+                wasm.OP_I64_STORE32: 'i32'}[insn.op.id]
 
     def get_frame_store(self, function, frame_pointer, bc):
         """
@@ -112,10 +111,10 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
         raises:
           ValueError: if the given bc does not contain a frame store.
         """
-        if bc[0].op.id != wasm.opcodes.OP_GET_LOCAL:
+        if bc[0].op.id != wasm.OP_GET_LOCAL:
             raise ValueError('not a store')
 
-        if bc[1].op.id != wasm.opcodes.OP_GET_LOCAL:
+        if bc[1].op.id != wasm.OP_GET_LOCAL:
             raise ValueError('not a store')
 
         if not self.is_store(bc[2].op):
@@ -146,20 +145,20 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
         returns:
           bool: True if a LOAD variant.
         """
-        return op.id in (wasm.opcodes.OP_I32_LOAD,
-                         wasm.opcodes.OP_I64_LOAD,
-                         wasm.opcodes.OP_F32_LOAD,
-                         wasm.opcodes.OP_F64_LOAD,
-                         wasm.opcodes.OP_I32_LOAD8_U,
-                         wasm.opcodes.OP_I32_LOAD8_S,
-                         wasm.opcodes.OP_I32_LOAD16_U,
-                         wasm.opcodes.OP_I32_LOAD16_S,
-                         wasm.opcodes.OP_I64_LOAD8_U,
-                         wasm.opcodes.OP_I64_LOAD8_S,
-                         wasm.opcodes.OP_I64_LOAD16_U,
-                         wasm.opcodes.OP_I64_LOAD16_S,
-                         wasm.opcodes.OP_I64_LOAD32_U,
-                         wasm.opcodes.OP_I64_LOAD32_S)
+        return op.id in (wasm.OP_I32_LOAD,
+                         wasm.OP_I64_LOAD,
+                         wasm.OP_F32_LOAD,
+                         wasm.OP_F64_LOAD,
+                         wasm.OP_I32_LOAD8_U,
+                         wasm.OP_I32_LOAD8_S,
+                         wasm.OP_I32_LOAD16_U,
+                         wasm.OP_I32_LOAD16_S,
+                         wasm.OP_I64_LOAD8_U,
+                         wasm.OP_I64_LOAD8_S,
+                         wasm.OP_I64_LOAD16_U,
+                         wasm.OP_I64_LOAD16_S,
+                         wasm.OP_I64_LOAD32_U,
+                         wasm.OP_I64_LOAD32_S)
 
     def get_load_size(self, insn):
         """
@@ -171,20 +170,20 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
         returns:
           str: String identifier for the load size and type, like `i32`.
         """
-        return {wasm.opcodes.OP_I32_LOAD: 'i32',
-                wasm.opcodes.OP_I64_LOAD: 'i64',
-                wasm.opcodes.OP_F32_LOAD: 'f32',
-                wasm.opcodes.OP_F64_LOAD: 'f64',
-                wasm.opcodes.OP_I32_LOAD8_U: 'i8',
-                wasm.opcodes.OP_I32_LOAD8_S: 'i8',
-                wasm.opcodes.OP_I32_LOAD16_U: 'i16',
-                wasm.opcodes.OP_I32_LOAD16_S: 'i16',
-                wasm.opcodes.OP_I64_LOAD8_U: 'i8',
-                wasm.opcodes.OP_I64_LOAD8_S: 'i8',
-                wasm.opcodes.OP_I64_LOAD16_U: 'i16',
-                wasm.opcodes.OP_I64_LOAD16_S: 'i16',
-                wasm.opcodes.OP_I64_LOAD32_U: 'i32',
-                wasm.opcodes.OP_I64_LOAD32_S: 'i32'}[insn.op.id]
+        return {wasm.OP_I32_LOAD: 'i32',
+                wasm.OP_I64_LOAD: 'i64',
+                wasm.OP_F32_LOAD: 'f32',
+                wasm.OP_F64_LOAD: 'f64',
+                wasm.OP_I32_LOAD8_U: 'i8',
+                wasm.OP_I32_LOAD8_S: 'i8',
+                wasm.OP_I32_LOAD16_U: 'i16',
+                wasm.OP_I32_LOAD16_S: 'i16',
+                wasm.OP_I64_LOAD8_U: 'i8',
+                wasm.OP_I64_LOAD8_S: 'i8',
+                wasm.OP_I64_LOAD16_U: 'i16',
+                wasm.OP_I64_LOAD16_S: 'i16',
+                wasm.OP_I64_LOAD32_U: 'i32',
+                wasm.OP_I64_LOAD32_S: 'i32'}[insn.op.id]
 
     def get_frame_load(self, function, frame_pointer, bc):
         """
@@ -212,7 +211,7 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
         raises:
           ValueError: if the given bc does not contain a frame store.
         """
-        if bc[0].op.id != wasm.opcodes.OP_GET_LOCAL:
+        if bc[0].op.id != wasm.OP_GET_LOCAL:
             raise ValueError('not a load')
 
         if not self.is_load(bc[1].op):
@@ -297,14 +296,14 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
 
         # pattern match on the LLVM function prologue.
         # obviously brittle.
-        return prologue_mnems == [wasm.opcodes.OP_GET_GLOBAL,  # global frame pointer
-                                  wasm.opcodes.OP_SET_LOCAL,
-                                  wasm.opcodes.OP_I32_CONST,  # function frame size
-                                  wasm.opcodes.OP_SET_LOCAL,
-                                  wasm.opcodes.OP_GET_LOCAL,
-                                  wasm.opcodes.OP_GET_LOCAL,
-                                  wasm.opcodes.OP_I32_SUB,
-                                  wasm.opcodes.OP_SET_LOCAL]  # frame pointer
+        return prologue_mnems == [wasm.OP_GET_GLOBAL,  # global frame pointer
+                                  wasm.OP_SET_LOCAL,
+                                  wasm.OP_I32_CONST,  # function frame size
+                                  wasm.OP_SET_LOCAL,
+                                  wasm.OP_GET_LOCAL,
+                                  wasm.OP_GET_LOCAL,
+                                  wasm.OP_I32_SUB,
+                                  wasm.OP_SET_LOCAL]  # frame pointer
 
     def analyze_function_frame(self, function):
         """
