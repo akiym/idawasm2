@@ -866,7 +866,7 @@ class wasm_processor_t(idaapi.processor_t):
         Returns: 1-ok, 0-operand is hidden.
         """
         if op.type == WASM_BLOCK:
-            if op.value == 0xFFFFFFC0:  # VarInt7 for 0x40
+            if op.value == 0xFFFFFFFFFFFFFFC0:  # VarInt7 for 0x40
                 # block has empty type
                 pass
             else:
