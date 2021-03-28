@@ -470,7 +470,7 @@ class wasm_processor_t(idaapi.processor_t):
           - self.function_ranges
           - self.globals
           - self.branch_targets
-        '''
+        """
         logger.info('parsing sections')
         buf = []
         for ea in idautils.Segments():
@@ -895,10 +895,10 @@ class wasm_processor_t(idaapi.processor_t):
                 f = self._get_function(ctx.insn.ea)
                 if op.reg < f['type']['param_count']:
                     # the first `param_count` indices reference a parameter,
-                    ctx.out_register('$param%d' % (op.reg))
+                    ctx.out_register('$param%d' % op.reg)
                 else:
                     # and the remaining indices are local variables.
-                    ctx.out_register('$local%d' % (op.reg))
+                    ctx.out_register('$local%d' % op.reg)
                 return True
 
         elif op.type == idaapi.o_imm:
@@ -920,7 +920,7 @@ class wasm_processor_t(idaapi.processor_t):
                     return True
                 else:
                     logger.info('missing global at index %d', op.value)
-                    ctx.out_register('$global%d' % (op.value))
+                    ctx.out_register('$global%d' % op.value)
                     return True
 
 
