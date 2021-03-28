@@ -1104,7 +1104,7 @@ class wasm_processor_t(idaapi.processor_t):
             # warning: py2.7-specific
             # can't usually just cast the bytearray to a string without explicit decode.
             # assumption: instruction will be less than 0x10 bytes.
-            buf = str(bytearray(idc.GetManyBytes(insn.ea, 0x10)))
+            buf = str(bytearray(idc.get_bytes(insn.ea, 0x10)))
         else:
             # single byte instruction
 
