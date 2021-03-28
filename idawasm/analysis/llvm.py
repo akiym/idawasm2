@@ -1,20 +1,18 @@
-import logging
-import itertools
 import collections
+import itertools
+import logging
 
+import ida_bytes
+import ida_frame
+import ida_funcs
+import ida_name
+import ida_pro
+import ida_struct
+import ida_ua
 import wasm
 import wasm.opcodes
 
-import ida_ua
-import ida_pro
-import ida_name
-import ida_funcs
-import ida_frame
-import ida_bytes
-import ida_struct
-
 import idawasm.analysis
-
 
 logger = logging.getLogger(__name__)
 
@@ -76,13 +74,13 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
         returns:
           str: String identifier for the store size and type, like `i32`.
         '''
-        return {wasm.opcodes.OP_I32_STORE:   'i32',
-                wasm.opcodes.OP_I64_STORE:   'i64',
-                wasm.opcodes.OP_F32_STORE:   'f32',
-                wasm.opcodes.OP_F64_STORE:   'f64',
-                wasm.opcodes.OP_I32_STORE8:  'i8',
+        return {wasm.opcodes.OP_I32_STORE: 'i32',
+                wasm.opcodes.OP_I64_STORE: 'i64',
+                wasm.opcodes.OP_F32_STORE: 'f32',
+                wasm.opcodes.OP_F64_STORE: 'f64',
+                wasm.opcodes.OP_I32_STORE8: 'i8',
                 wasm.opcodes.OP_I32_STORE16: 'i16',
-                wasm.opcodes.OP_I64_STORE8:  'i8',
+                wasm.opcodes.OP_I64_STORE8: 'i8',
                 wasm.opcodes.OP_I64_STORE16: 'i16',
                 wasm.opcodes.OP_I64_STORE32: 'i32'}[insn.op.id]
 
@@ -138,7 +136,6 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
 
         return ret
 
-
     def is_load(self, op):
         '''
         does the given instruction appear to be a LOAD variant?
@@ -174,16 +171,16 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
         returns:
           str: String identifier for the load size and type, like `i32`.
         '''
-        return {wasm.opcodes.OP_I32_LOAD:     'i32',
-                wasm.opcodes.OP_I64_LOAD:     'i64',
-                wasm.opcodes.OP_F32_LOAD:     'f32',
-                wasm.opcodes.OP_F64_LOAD:     'f64',
-                wasm.opcodes.OP_I32_LOAD8_U:  'i8',
-                wasm.opcodes.OP_I32_LOAD8_S:  'i8',
+        return {wasm.opcodes.OP_I32_LOAD: 'i32',
+                wasm.opcodes.OP_I64_LOAD: 'i64',
+                wasm.opcodes.OP_F32_LOAD: 'f32',
+                wasm.opcodes.OP_F64_LOAD: 'f64',
+                wasm.opcodes.OP_I32_LOAD8_U: 'i8',
+                wasm.opcodes.OP_I32_LOAD8_S: 'i8',
                 wasm.opcodes.OP_I32_LOAD16_U: 'i16',
                 wasm.opcodes.OP_I32_LOAD16_S: 'i16',
-                wasm.opcodes.OP_I64_LOAD8_U:  'i8',
-                wasm.opcodes.OP_I64_LOAD8_S:  'i8',
+                wasm.opcodes.OP_I64_LOAD8_U: 'i8',
+                wasm.opcodes.OP_I64_LOAD8_S: 'i8',
                 wasm.opcodes.OP_I64_LOAD16_U: 'i16',
                 wasm.opcodes.OP_I64_LOAD16_S: 'i16',
                 wasm.opcodes.OP_I64_LOAD32_U: 'i32',
@@ -254,7 +251,7 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
         SLICE_SIZE = 3
         references = collections.defaultdict(lambda: list())
         for i in range(len(bc) - SLICE_SIZE - 1):
-            insns = bc[i:i+SLICE_SIZE]
+            insns = bc[i:i + SLICE_SIZE]
 
             try:
                 load = self.get_frame_load(function, frame_pointer, insns)
@@ -302,13 +299,12 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
         # obviously brittle.
         return prologue_mnems == [wasm.opcodes.OP_GET_GLOBAL,  # global frame pointer
                                   wasm.opcodes.OP_SET_LOCAL,
-                                  wasm.opcodes.OP_I32_CONST,   # function frame size
+                                  wasm.opcodes.OP_I32_CONST,  # function frame size
                                   wasm.opcodes.OP_SET_LOCAL,
                                   wasm.opcodes.OP_GET_LOCAL,
                                   wasm.opcodes.OP_GET_LOCAL,
                                   wasm.opcodes.OP_I32_SUB,
-                                  wasm.opcodes.OP_SET_LOCAL]   # frame pointer
-
+                                  wasm.opcodes.OP_SET_LOCAL]  # frame pointer
 
     def analyze_function_frame(self, function):
         '''
@@ -369,19 +365,19 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
             flags = 0
             size = 0
             for ref in refs:
-                fl = {'i8':  ida_bytes.FF_BYTE   | ida_bytes.FF_DATA,
-                      'i16': ida_bytes.FF_WORD   | ida_bytes.FF_DATA,
-                      'i32': ida_bytes.FF_DWORD  | ida_bytes.FF_DATA,
-                      'i64': ida_bytes.FF_QWORD  | ida_bytes.FF_DATA,
-                      'f32': ida_bytes.FF_FLOAT  | ida_bytes.FF_DATA,
-                      'f64': ida_bytes.FF_DOUBLE | ida_bytes.FF_DATA,}[ref['element_size']]
+                fl = {'i8': ida_bytes.FF_BYTE | ida_bytes.FF_DATA,
+                      'i16': ida_bytes.FF_WORD | ida_bytes.FF_DATA,
+                      'i32': ida_bytes.FF_DWORD | ida_bytes.FF_DATA,
+                      'i64': ida_bytes.FF_QWORD | ida_bytes.FF_DATA,
+                      'f32': ida_bytes.FF_FLOAT | ida_bytes.FF_DATA,
+                      'f64': ida_bytes.FF_DOUBLE | ida_bytes.FF_DATA, }[ref['element_size']]
 
-                s = {'i8':  1,
+                s = {'i8': 1,
                      'i16': 2,
                      'i32': 4,
                      'i64': 8,
                      'f32': 4,
-                     'f64': 8,}[ref['element_size']]
+                     'f64': 8, }[ref['element_size']]
 
                 # by luck, FF_BYTE < FF_WORD < FF_DWORD < FF_QWORD,
                 # so we can order flag values.

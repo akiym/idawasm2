@@ -1,5 +1,6 @@
 import abc
 
+
 class Analyzer:
     '''
     An analyzer performs analysis tasks on a new database,

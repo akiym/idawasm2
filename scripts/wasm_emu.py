@@ -21,19 +21,15 @@ Currently it does not implement branching or comparison instructions.
 Therefore, you should select instructions within a single basic block.
 '''
 import logging
-import collections
 
+import ida_bytes
+import idaapi
+import netnode
 import wasm
 import wasm.decode
 import wasm.opcodes
-import netnode
-
-import idaapi
-import ida_bytes
-
 
 logger = logging.getLogger('wasm-emu')
-
 
 
 def get_type_sort_order(v):
@@ -214,8 +210,8 @@ def reduce(value):
             # (A + B) + C = A + (B + C)
             # and reduce the B + C if constant
             if (isinstance(rhs, I32)
-                  and isinstance(lhs, AddOperation)
-                  and isinstance(lhs.rhs, I32)):
+                    and isinstance(lhs, AddOperation)
+                    and isinstance(lhs.rhs, I32)):
                 return AddOperation(lhs.lhs, I32(lhs.rhs.value + rhs.value))
 
         return type(value)(lhs, rhs)
@@ -225,7 +221,6 @@ def reduce(value):
 
 
 def render_local(index, ctx={}):
-
     name = '$local{index:d}'.format(**locals())
     if name in ctx.get('regvars', {}):
         return ctx['regvars'][name]
@@ -393,10 +388,10 @@ class Emulator:
             addr = AddOperation(base, I32(offset))
 
         if (isinstance(addr, I32)
-              and addr.value in self.memory
-              and addr.value + 1 in self.memory
-              and addr.value + 2 in self.memory
-              and addr.value + 3 in self.memory):
+                and addr.value in self.memory
+                and addr.value + 1 in self.memory
+                and addr.value + 2 in self.memory
+                and addr.value + 3 in self.memory):
 
             v = (self.memory[addr.value] +
                  (self.memory[addr.value + 1] << 8) +

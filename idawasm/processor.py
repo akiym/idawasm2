@@ -5,28 +5,21 @@
 #  - compute stack deltas
 #  - add entry point for start function (need to see an example)
 
-# stdlib
-import logging
 import functools
+import logging
 
-# from pip
-import wasm
-import wasm.wasmtypes
-import netnode
-
-# from IDA
-import idc
 import idaapi
 import idautils
+import idc
+import netnode
+import wasm
+import wasm.wasmtypes
 
-# from this project
-import idawasm.const
-import idawasm.common
 import idawasm.analysis.llvm
-
+import idawasm.common
+import idawasm.const
 
 logger = logging.getLogger(__name__)
-
 
 # these are wasm-specific operand types
 WASM_LOCAL = idaapi.o_idpspec0
@@ -52,6 +45,7 @@ def no_exceptions(f):
 
         assert definitely_doesnt_work() == 0
     '''
+
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
         try:
@@ -61,6 +55,7 @@ def no_exceptions(f):
         except:  # NOQA: E722 do not use bare 'except'
             logger.error('exception in %s', f.__name__, exc_info=True)
             return 0
+
     return wrapper
 
 
@@ -124,8 +119,8 @@ class wasm_processor_t(idaapi.processor_t):
         returns OOFW_xxx flag given a dt_xxx
         '''
         return {
-            idaapi.dt_byte:  idaapi.OOFW_8,
-            idaapi.dt_word:  idaapi.OOFW_16,
+            idaapi.dt_byte: idaapi.OOFW_8,
+            idaapi.dt_word: idaapi.OOFW_16,
             idaapi.dt_dword: idaapi.OOFW_32,
             idaapi.dt_qword: idaapi.OOFW_64,
         }[dt]
@@ -232,9 +227,9 @@ class wasm_processor_t(idaapi.processor_t):
                     branch_targets[p] = {
                         'block': {
                             'type': 'function',
-                            'offset': offset,     # start of function
-                            'end_offset': p,      # end of function
-                            'depth': 0,           # top level always has depth 0
+                            'offset': offset,  # start of function
+                            'end_offset': p,  # end of function
+                            'depth': 0,  # top level always has depth 0
                         }
                     }
                     break
@@ -536,7 +531,7 @@ class wasm_processor_t(idaapi.processor_t):
         wasm_nn['functions'] = {f['index']: f['offset'] for f in self.functions.values() if 'offset' in f}
         wasm_nn['globals'] = {g['index']: g['offset'] for g in self.globals.values() if 'offset' in g}
 
-        for Analyzer in (idawasm.analysis.llvm.LLVMAnalyzer, ):
+        for Analyzer in (idawasm.analysis.llvm.LLVMAnalyzer,):
             ana = Analyzer(self)
 
             if ana.taste():
@@ -544,7 +539,6 @@ class wasm_processor_t(idaapi.processor_t):
                 ana.analyze()
             else:
                 logger.debug('%s declined analysis', Analyzer.__name__)
-
 
     @ida_entry
     def notify_oldfile(self, filename):
@@ -791,8 +785,8 @@ class wasm_processor_t(idaapi.processor_t):
         if (insn.itype in {self.itype_BR,
                            self.itype_BR_IF,
                            self.itype_BR_TABLE}
-              and next is not None                # NOQA: E127 continuation line over-indented for visual indent
-              and next.itype == self.itype_END):  # NOQA: E127
+                and next is not None  # NOQA: E127 continuation line over-indented for visual indent
+                and next.itype == self.itype_END):  # NOQA: E127
 
             if insn.itype == self.itype_BR:
                 return self.notify_emu_BR_END(insn, next)
@@ -800,7 +794,7 @@ class wasm_processor_t(idaapi.processor_t):
             elif insn.itype == self.itype_BR_IF:
                 return self.notify_emu_BR_IF_END(insn, next)
 
-            elif insn.itype in (self.itype_BR_TABLE, ):
+            elif insn.itype in (self.itype_BR_TABLE,):
                 raise NotImplementedError('br table')
 
         # handle cases like:
@@ -878,12 +872,12 @@ class wasm_processor_t(idaapi.processor_t):
                 # ref: https://webassembly.github.io/spec/core/binary/types.html#binary-valtype
                 # TODO(wb): untested!
                 ctx.out_keyword({
-                    # TODO(wb): I don't think these constants will line up in practice
-                    0x7F: 'type:i32',
-                    0x7E: 'type:i64',
-                    0x7D: 'type:f32',
-                    0x7C: 'type:f64',
-                }[op.value])
+                                    # TODO(wb): I don't think these constants will line up in practice
+                                    0x7F: 'type:i32',
+                                    0x7E: 'type:i64',
+                                    0x7D: 'type:f32',
+                                    0x7C: 'type:f64',
+                                }[op.value])
             return True
 
         elif op.type == idaapi.o_reg:
@@ -925,7 +919,7 @@ class wasm_processor_t(idaapi.processor_t):
                     return True
                 else:
                     logger.info('missing global at index %d', op.value)
-                    ctx.out_register('$global%d'% (op.value))
+                    ctx.out_register('$global%d' % (op.value))
                     return True
 
 
@@ -1067,7 +1061,7 @@ class wasm_processor_t(idaapi.processor_t):
         #     code:0E77     br_if        loc_error
 
         if insn.itype in (self.itype_BLOCK, self.itype_LOOP, self.itype_END) \
-           and ea in self.branch_targets:
+                and ea in self.branch_targets:
 
             targets = self.branch_targets[ea]
             block = targets['block']

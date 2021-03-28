@@ -1,15 +1,14 @@
 import os
 import struct
 
+import idaapi
+import idc
 import wasm
 import wasm.decode
 import wasm.wasmtypes
 
-import idc
-import idaapi
-
-import idawasm.const
 import idawasm.common
+import idawasm.const
 
 
 def accept_file(f, n):
