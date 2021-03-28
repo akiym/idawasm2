@@ -943,7 +943,7 @@ class wasm_processor_t(idaapi.processor_t):
                     #  we output the raw name of the function.
                     #
                     # TODO: link this to the import entry
-                    ctx.out_keyword(f['name'].encode('utf-8'))
+                    ctx.out_keyword(f['name'])
                 return True
 
             elif wtype == WASM_TYPE_INDEX:
@@ -1103,11 +1103,11 @@ class wasm_processor_t(idaapi.processor_t):
 
             # can't usually just cast the bytearray to a string without explicit decode.
             # assumption: instruction will be less than 0x10 bytes.
-            buf = bytes(bytearray(idc.get_bytes(insn.ea, 0x10)))
+            buf = idc.get_bytes(insn.ea, 0x10)
         else:
             # single byte instruction
 
-            buf = bytes(bytearray([opb]))
+            buf = bytes([opb])
 
         bc = next(wasm.decode_bytecode(buf))
         for _ in range(1, bc.len):
@@ -1270,8 +1270,7 @@ class wasm_processor_t(idaapi.processor_t):
                 'opcode': op.id,
                 # the IDA constant for this instruction
                 'id': i,
-                # danger: this must be bytes
-                'name': op.mnemonic.encode(),
+                'name': op.mnemonic,
                 'feature': op.flags,
                 'cmt': idawasm.const.WASM_OPCODE_DESCRIPTIONS.get(op.id),
             }

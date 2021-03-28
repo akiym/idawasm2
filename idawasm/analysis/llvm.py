@@ -339,7 +339,7 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
         # add a frame structure to the function
         f = ida_funcs.get_func(function['offset'])
         ida_frame.add_frame(f, 0x0, 0x0, frame_size)
-        ida_struct.set_struc_name(f.frame, ('frame%d' % function['index']).encode('utf-8'))
+        ida_struct.set_struc_name(f.frame, 'frame%d' % function['index'])
 
         # ensure global variable $frame_stack is named appropriately
         ida_name.set_name(self.proc.globals[global_frame_pointer]['offset'], '$frame_stack')
