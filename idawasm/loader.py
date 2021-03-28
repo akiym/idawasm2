@@ -12,7 +12,7 @@ import idawasm.const
 
 
 def accept_file(f, n):
-    '''
+    """
     return the name of the format, if it looks like a WebAssembly module, or 0 on unsupported.
 
     Args:
@@ -21,7 +21,7 @@ def accept_file(f, n):
 
     Returns:
       Union[str, int]: str if supported, 0 if unsupported.
-    '''
+    """
     f.seek(0)
     if f.read(4) != b'\x00asm':
         return 0
@@ -34,13 +34,13 @@ def accept_file(f, n):
 
 
 def MakeN(addr, size):
-    '''
+    """
     Make a integer with the given size at the given address.
 
     Args:
       addr (int): effective address.
       size (int): the size of the integer, one of 1, 2, 4, or 8.
-    '''
+    """
     if size == 1:
         idc.MakeByte(addr)
     elif size == 2:
@@ -52,9 +52,9 @@ def MakeN(addr, size):
 
 
 def get_section(sections, section_id):
-    '''
+    """
     given a sequence of sections, return the section with the given id.
-    '''
+    """
     for i, section in enumerate(sections):
         if i == 0:
             continue
@@ -66,7 +66,7 @@ def get_section(sections, section_id):
 
 
 def format_value(name, value):
-    '''
+    """
     format the given value into something human readable, using the given name as a hint.
 
     Example::
@@ -83,7 +83,7 @@ def format_value(name, value):
 
     Returns:
       str: a string formatted for human consumption.
-    '''
+    """
     if isinstance(value, int):
         # a heuristic to detect fields that contain a type value
         if 'type' in name or 'form' in name:
@@ -105,7 +105,7 @@ def format_value(name, value):
 
 
 def load_struc(struc, p, path):
-    '''
+    """
     Load the given structure into the current IDA Pro at the given offset.
 
     Example::
@@ -119,7 +119,7 @@ def load_struc(struc, p, path):
 
     Returns:
       int: the next offset following the loaded structure.
-    '''
+    """
     for field in idawasm.common.get_fields(struc):
         # build names like: `sections:2:payload:entries:0:module_str`
         name = path + ':' + field.name
@@ -163,7 +163,7 @@ def load_struc(struc, p, path):
 
 
 def load_section(section, p):
-    '''
+    """
     Load the given section into the current IDA Pro at the given offset.
 
     Example::
@@ -176,14 +176,14 @@ def load_section(section, p):
 
     Returns:
       int: the next offset following the loaded structure.
-    '''
+    """
     load_struc(section.data, p, 'sections:' + str(section.data.id))
 
 
 def load_globals_section(section, p):
-    '''
+    """
     Specialized handler for the GLOBALS section to mark the initializer as code.
-    '''
+    """
     ppayload = p + idawasm.common.offset_of(section.data, 'payload')
     pglobals = ppayload + idawasm.common.offset_of(section.data.payload, 'globals')
     pcur = pglobals
@@ -206,9 +206,9 @@ def load_globals_section(section, p):
 
 
 def load_elements_section(section, p):
-    '''
+    """
     Specialized handler for the ELEMENTS section to mark the offset initializer as code.
-    '''
+    """
     ppayload = p + idawasm.common.offset_of(section.data, 'payload')
     pentries = ppayload + idawasm.common.offset_of(section.data.payload, 'entries')
     pcur = pentries
@@ -218,9 +218,9 @@ def load_elements_section(section, p):
 
 
 def load_data_section(section, p):
-    '''
+    """
     specialized handler for the DATA section to mark the offset initializer as code.
-    '''
+    """
     ppayload = p + idawasm.common.offset_of(section.data, 'payload')
     pentries = ppayload + idawasm.common.offset_of(section.data.payload, 'entries')
     pcur = pentries
@@ -237,7 +237,7 @@ SECTION_LOADERS = {
 
 
 def load_file(f, neflags, format):
-    '''
+    """
     load the given file into the current IDA Pro database.
 
     Args:
@@ -247,7 +247,7 @@ def load_file(f, neflags, format):
 
     Returns:
       int: 1 on success, 0 on failure
-    '''
+    """
 
     # compute file size, then read the entire contents
     f.seek(0x0, os.SEEK_END)

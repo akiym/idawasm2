@@ -31,7 +31,7 @@ WASM_ALIGN = idaapi.o_idpspec5
 
 
 def no_exceptions(f):
-    '''
+    """
     decorator that catches and logs any exceptions.
     the exceptions are swallowed, and `0` is returned.
 
@@ -44,7 +44,7 @@ def no_exceptions(f):
             raise ZeroDivisionError()
 
         assert definitely_doesnt_work() == 0
-    '''
+    """
 
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
@@ -115,9 +115,9 @@ class wasm_processor_t(idaapi.processor_t):
     }
 
     def dt_to_width(self, dt):
-        '''
+        """
         returns OOFW_xxx flag given a dt_xxx
-        '''
+        """
         return {
             idaapi.dt_byte: idaapi.OOFW_8,
             idaapi.dt_word: idaapi.OOFW_16,
@@ -126,7 +126,7 @@ class wasm_processor_t(idaapi.processor_t):
         }[dt]
 
     def _get_section(self, section_id):
-        '''
+        """
         fetch the section with the given id.
 
         Args:
@@ -137,7 +137,7 @@ class wasm_processor_t(idaapi.processor_t):
 
         Raises:
           KeyError: if the section is not found.
-        '''
+        """
         for i, section in enumerate(self.sections):
             if i == 0:
                 continue
@@ -150,7 +150,7 @@ class wasm_processor_t(idaapi.processor_t):
         raise KeyError(section_id)
 
     def _get_section_offset(self, section_id):
-        '''
+        """
         fetch the file offset of the given section.
 
         Args:
@@ -161,7 +161,7 @@ class wasm_processor_t(idaapi.processor_t):
 
         Raises:
           KeyError: if the section is not found.
-        '''
+        """
         p = 0
         for i, section in enumerate(self.sections):
             if i == 0:
@@ -177,7 +177,7 @@ class wasm_processor_t(idaapi.processor_t):
         raise KeyError(section_id)
 
     def _compute_function_branch_targets(self, offset, code):
-        '''
+        """
         compute branch targets for the given code segment.
 
         we can do it in a single pass:
@@ -191,7 +191,7 @@ class wasm_processor_t(idaapi.processor_t):
 
         Returns:
           Dict[int, Dict[int, int]]: map from instruction addresses to map from relative depth to branch target address.
-        '''
+        """
         # map from virtual address to map from relative depth to virtual address
         branch_targets = {}
         # map from block index to block instance, with fields including `offset` and `depth`
@@ -279,7 +279,7 @@ class wasm_processor_t(idaapi.processor_t):
         return branch_targets
 
     def _parse_types(self):
-        '''
+        """
         parse the type entries.
 
         Returns:
@@ -289,17 +289,17 @@ class wasm_processor_t(idaapi.processor_t):
             - param_types
             - return_count
             - return_type
-        '''
+        """
         type_section = self._get_section(wasm.wasmtypes.SEC_TYPE)
         return idawasm.common.struc_to_dict(type_section.data.payload.entries)
 
     def _parse_globals(self):
-        '''
+        """
         parse the global entries.
 
         Returns:
           Dict[int, Dict[str, any]]: from global index to dict with keys `offset` and `type`.
-        '''
+        """
         globals_ = {}
         global_section = self._get_section(wasm.wasmtypes.SEC_GLOBAL)
         pglobal_section = self._get_section_offset(wasm.wasmtypes.SEC_GLOBAL)
@@ -319,13 +319,13 @@ class wasm_processor_t(idaapi.processor_t):
         return globals_
 
     def _parse_imported_functions(self):
-        '''
+        """
         parse the import entries for functions.
         useful for recovering function names.
 
         Returns:
           Dict[int, Dict[str, any]]: from function index to dict with keys `index`, `module`, and `name`.
-        '''
+        """
         functions = {}
         import_section = self._get_section(wasm.wasmtypes.SEC_IMPORT)
         type_section = self._get_section(wasm.wasmtypes.SEC_TYPE)
@@ -353,13 +353,13 @@ class wasm_processor_t(idaapi.processor_t):
         return functions
 
     def _parse_exported_functions(self):
-        '''
+        """
         parse the export entries for functions.
         useful for recovering function names.
 
         Returns:
           Dict[int, Dict[str, any]]: from function index to dict with keys `index` and `name`.
-        '''
+        """
         functions = {}
         export_section = self._get_section(wasm.wasmtypes.SEC_EXPORT)
         for entry in export_section.data.payload.entries:
@@ -406,7 +406,7 @@ class wasm_processor_t(idaapi.processor_t):
                 name = exported_functions[function_index]['name']
                 is_exported = True
             else:
-                name = '$func%d' % (function_index)
+                name = '$func%d' % function_index
                 is_exported = False
 
             functions[function_index] = {
@@ -456,7 +456,7 @@ class wasm_processor_t(idaapi.processor_t):
             return self._render_type(function['type'], name=function['name'])
 
     def load(self):
-        '''
+        """
         load the state of the processor and analysis from the segments.
 
         the processor object may not be re-created, so we do our initializiation here.
@@ -521,9 +521,9 @@ class wasm_processor_t(idaapi.processor_t):
 
     @ida_entry
     def notify_newfile(self, filename):
-        '''
+        """
         handle file being analyzed for the first time.
-        '''
+        """
         logger.info('new file: %s', filename)
         self.load()
 
@@ -542,17 +542,17 @@ class wasm_processor_t(idaapi.processor_t):
 
     @ida_entry
     def notify_oldfile(self, filename):
-        '''
+        """
         handle file loaded from existing .idb database.
-        '''
+        """
         logger.info('existing database: %s', filename)
         self.load()
 
     @ida_entry
     def notify_savebase(self):
-        '''
+        """
         the database is being saved.
-        '''
+        """
         logger.info('saving wasm processor state.')
 
     @ida_entry
@@ -566,23 +566,23 @@ class wasm_processor_t(idaapi.processor_t):
 
     @ida_entry
     def notify_get_autocmt(self, insn):
-        '''
+        """
         fetch instruction auto-comment.
 
         Returns:
           Union[str, None]: the comment string, or None.
-        '''
+        """
         if 'cmt' in self.instruc[insn.itype]:
             return self.instruc[insn.itype]['cmt']
 
     @ida_entry
     def notify_may_be_func(self, insn, state):
-        '''
+        """
         can a function start at the given instruction?
 
         Returns:
           int: 100 if a function starts here, zero otherwise.
-        '''
+        """
         if insn.ea in self.function_offsets:
             return 100
         else:
@@ -704,7 +704,7 @@ class wasm_processor_t(idaapi.processor_t):
 
     @ida_entry
     def notify_emu(self, insn):
-        '''
+        """
         Emulate instruction, create cross-references, plan to analyze
         subsequent instructions, modify flags etc. Upon entrance to this function
         all information about the instruction is in 'insn' structure.
@@ -750,7 +750,7 @@ class wasm_processor_t(idaapi.processor_t):
 
         unfortunately, adding xrefs on subsequent instructions doesn't work (the node doesn't exist, or something).
         so, we have to used this "deferred" approach.
-        '''
+        """
 
         # note: `next` may be None if invalid.
         next = idautils.DecodeInstruction(insn.ea + insn.size)
@@ -845,9 +845,9 @@ class wasm_processor_t(idaapi.processor_t):
         ctx.out_mnem(20, postfix)
 
     def _get_function(self, ea):
-        '''
+        """
         fetch the function object that contains the given address.
-        '''
+        """
         # warning: O(#funcs) scan here, called in a tight loop (render operand).
         for (start, end), f in self.function_ranges.items():
             if start <= ea < end:
@@ -856,14 +856,14 @@ class wasm_processor_t(idaapi.processor_t):
 
     @ida_entry
     def notify_out_operand(self, ctx, op):
-        '''
+        """
         Generate text representation of an instructon operand.
         This function shouldn't change the database, flags or anything else.
         All these actions should be performed only by u_emu() function.
         The output text is placed in the output buffer initialized with init_output_buffer()
         This function uses out_...() functions from ua.hpp to generate the operand text
         Returns: 1-ok, 0-operand is hidden.
-        '''
+        """
         if op.type == WASM_BLOCK:
             if op.value == 0xFFFFFFC0:  # VarInt7 for 0x40
                 # block has empty type
@@ -985,12 +985,12 @@ class wasm_processor_t(idaapi.processor_t):
 
     @ida_entry
     def notify_out_insn(self, ctx):
-        '''
+        """
         must not change the database.
 
         args:
           ctx (object): has a `.insn` field.
-        '''
+        """
         insn = ctx.insn
         ea = insn.ea
 
@@ -1076,7 +1076,7 @@ class wasm_processor_t(idaapi.processor_t):
 
     @ida_entry
     def notify_ana(self, insn):
-        '''
+        """
         decodes an instruction and place it into the given insn.
 
         Args:
@@ -1084,7 +1084,7 @@ class wasm_processor_t(idaapi.processor_t):
 
         Returns:
           int: size of insn on success, 0 on failure.
-        '''
+        """
 
         # as of today (v1), each opcode is a single byte
         opb = insn.get_next_byte()

@@ -18,10 +18,10 @@ logger = logging.getLogger(__name__)
 
 
 class LLVMAnalyzer(idawasm.analysis.Analyzer):
-    '''
+    """
     analyzer specific to wasmception/LLVM that recongizing function prologues.
     from there, creates function frame structures, and marks up references.
-    '''
+    """
 
     # estimated size of the llvm function prologue.
     PROLOGUE_SIZE = 21
@@ -30,12 +30,12 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
         super(LLVMAnalyzer, self).__init__(*args)
 
     def taste(self):
-        '''
+        """
         I hhaven't identified where LLVM might leave a compiler stamp,
          therefore, let's detect LLVM code signatures.
 
         does at least one function appear to have an LLVM-style function prologue?
-        '''
+        """
         for function in self.proc.functions.values():
             if self.has_llvm_prologue(function):
                 return True
@@ -45,7 +45,7 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
         self.analyze_function_frames(self.proc.functions)
 
     def is_store(self, op):
-        '''
+        """
         does the given instruction appear to be a STORE variant?
 
         args:
@@ -53,7 +53,7 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
 
         returns:
           bool: True if a STORE variant.
-        '''
+        """
         return op.id in (wasm.opcodes.OP_I32_STORE,
                          wasm.opcodes.OP_I64_STORE,
                          wasm.opcodes.OP_F32_STORE,
@@ -65,7 +65,7 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
                          wasm.opcodes.OP_I64_STORE32)
 
     def get_store_size(self, insn):
-        '''
+        """
         fetch the type and size of the given STORE instruction.
 
         args:
@@ -73,7 +73,7 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
 
         returns:
           str: String identifier for the store size and type, like `i32`.
-        '''
+        """
         return {wasm.opcodes.OP_I32_STORE: 'i32',
                 wasm.opcodes.OP_I64_STORE: 'i64',
                 wasm.opcodes.OP_F32_STORE: 'f32',
@@ -85,7 +85,7 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
                 wasm.opcodes.OP_I64_STORE32: 'i32'}[insn.op.id]
 
     def get_frame_store(self, function, frame_pointer, bc):
-        '''
+        """
         find patterns like::
 
             code:01F3 20 06                   get_local           $frame_pointer
@@ -111,7 +111,7 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
 
         raises:
           ValueError: if the given bc does not contain a frame store.
-        '''
+        """
         if bc[0].op.id != wasm.opcodes.OP_GET_LOCAL:
             raise ValueError('not a store')
 
@@ -137,7 +137,7 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
         return ret
 
     def is_load(self, op):
-        '''
+        """
         does the given instruction appear to be a LOAD variant?
 
         args:
@@ -145,7 +145,7 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
 
         returns:
           bool: True if a LOAD variant.
-        '''
+        """
         return op.id in (wasm.opcodes.OP_I32_LOAD,
                          wasm.opcodes.OP_I64_LOAD,
                          wasm.opcodes.OP_F32_LOAD,
@@ -162,7 +162,7 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
                          wasm.opcodes.OP_I64_LOAD32_S)
 
     def get_load_size(self, insn):
-        '''
+        """
         fetch the type and size of the given LOAD instruction.
 
         args:
@@ -170,7 +170,7 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
 
         returns:
           str: String identifier for the load size and type, like `i32`.
-        '''
+        """
         return {wasm.opcodes.OP_I32_LOAD: 'i32',
                 wasm.opcodes.OP_I64_LOAD: 'i64',
                 wasm.opcodes.OP_F32_LOAD: 'f32',
@@ -187,7 +187,7 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
                 wasm.opcodes.OP_I64_LOAD32_S: 'i32'}[insn.op.id]
 
     def get_frame_load(self, function, frame_pointer, bc):
-        '''
+        """
         find patterns like::
 
             code:0245 20 06                   get_local           $local6
@@ -211,7 +211,7 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
 
         raises:
           ValueError: if the given bc does not contain a frame store.
-        '''
+        """
         if bc[0].op.id != wasm.opcodes.OP_GET_LOCAL:
             raise ValueError('not a load')
 
@@ -229,7 +229,7 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
         }
 
     def find_function_frame_references(self, function, frame_pointer):
-        '''
+        """
         scan the given instruction for LOAD or STOREs to the function frame.
 
         args:
@@ -243,7 +243,7 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
             - access_type (str): type of reference, either "load" or "store".
             - offset (int): offset into the bitcode of the reference instruction.
             - parameter (int, optional): the parameter index being loaded.
-        '''
+        """
         buf = ida_bytes.get_many_bytes(function['offset'], function['size'])
         bc = list(wasm.decode.decode_bytecode(buf))
 
@@ -276,7 +276,7 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
         return references
 
     def has_llvm_prologue(self, function):
-        '''
+        """
         does the given function appear to have an LLVM-style function prologue?
 
         args:
@@ -284,7 +284,7 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
 
         returns:
           bool: if the function seems to have an LLVM-style function prologue.
-        '''
+        """
         if function['imported']:
             return False
 
@@ -307,12 +307,12 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
                                   wasm.opcodes.OP_SET_LOCAL]  # frame pointer
 
     def analyze_function_frame(self, function):
-        '''
+        """
         inspect the given function to determine the frame layout and set references appropriately.
 
         args:
           function (Dict[str, any]): function instance.
-        '''
+        """
         # given a function prologue like the following:
         #
         #     23 80 80 80 80 00       get_global          $global0
@@ -407,11 +407,11 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
                 ida_bytes.op_stroff(insn, 0, path.cast(), 1, 0)
 
     def analyze_function_frames(self, functions):
-        '''
+        """
         inspect the given functions to determine the frame layouts and set references appropriately.
 
         args:
           functions (List[Dict[str, any]]): function instances.
-        '''
+        """
         for function in functions.values():
             self.analyze_function_frame(function)

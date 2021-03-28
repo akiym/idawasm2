@@ -2,9 +2,9 @@ import collections
 
 
 def offset_of(struc, fieldname):
-    '''
+    """
     given a wasm struct instance and a field name, return the offset into the struct where you'd find the field.
-    '''
+    """
     p = 0
     dec_meta = struc.get_decoder_meta()
     for field in struc.get_meta().fields:
@@ -16,11 +16,11 @@ def offset_of(struc, fieldname):
 
 
 def size_of(struc, fieldname=None):
-    '''
+    """
     given a wasm struct instance, compute the size of the element.
     if a field name is provided, fetch the size of the given field.
     otherwise, fetch the size of the entire struct.
-    '''
+    """
     if fieldname is not None:
         # size of the given field, by name
         dec_meta = struc.get_decoder_meta()
@@ -44,7 +44,7 @@ def get_fields(struc):
 
 
 def is_struc(o):
-    '''
+    """
     does the given object look like a structure from the wasm library.
 
     this is super ugly, but since the wasm library creates types on demand, i'm not sure how else to test for them.
@@ -62,7 +62,7 @@ def is_struc(o):
 
     Returns:
       bool: if the object appears to be a structure from the wasm library.
-    '''
+    """
     return '.GeneratedStructureData' in str(type(o))
 
 
