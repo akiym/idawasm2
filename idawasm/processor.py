@@ -521,7 +521,7 @@ class wasm_processor_t(idaapi.processor_t):
             # TODO: idc.add_entry for the start routine. need an example of this.
 
     @ida_entry
-    def notify_newfile(self, filename):
+    def ev_newfile(self, filename):
         """
         handle file being analyzed for the first time.
         """
@@ -542,7 +542,7 @@ class wasm_processor_t(idaapi.processor_t):
                 logger.debug('%s declined analysis', Analyzer.__name__)
 
     @ida_entry
-    def notify_oldfile(self, filename):
+    def ev_oldfile(self, filename):
         """
         handle file loaded from existing .idb database.
         """
@@ -550,14 +550,14 @@ class wasm_processor_t(idaapi.processor_t):
         self.load()
 
     @ida_entry
-    def notify_savebase(self):
+    def savebase(self):
         """
         the database is being saved.
         """
         logger.info('saving wasm processor state.')
 
     @ida_entry
-    def notify_endbinary(self, ok):
+    def ev_endbinary(self, ok):
         """
          After loading a binary file
          args:
@@ -566,7 +566,7 @@ class wasm_processor_t(idaapi.processor_t):
         logger.info('wasm module loaded.')
 
     @ida_entry
-    def notify_get_autocmt(self, insn):
+    def ev_get_autocmt(self, insn):
         """
         fetch instruction auto-comment.
 
@@ -577,7 +577,7 @@ class wasm_processor_t(idaapi.processor_t):
             return self.instruc[insn.itype]['cmt']
 
     @ida_entry
-    def notify_may_be_func(self, insn, state):
+    def ev_may_be_func(self, insn, state):
         """
         can a function start at the given instruction?
 
@@ -704,7 +704,7 @@ class wasm_processor_t(idaapi.processor_t):
         return 1
 
     @ida_entry
-    def notify_emu(self, insn):
+    def ev_emu_insn(self, insn):
         """
         Emulate instruction, create cross-references, plan to analyze
         subsequent instructions, modify flags etc. Upon entrance to this function
@@ -856,7 +856,7 @@ class wasm_processor_t(idaapi.processor_t):
         raise KeyError(ea)
 
     @ida_entry
-    def notify_out_operand(self, ctx, op):
+    def ev_out_operand(self, ctx, op):
         """
         Generate text representation of an instructon operand.
         This function shouldn't change the database, flags or anything else.
@@ -984,7 +984,7 @@ class wasm_processor_t(idaapi.processor_t):
         return False
 
     @ida_entry
-    def notify_out_insn(self, ctx):
+    def ev_out_insn(self, ctx):
         """
         must not change the database.
 
@@ -1075,7 +1075,7 @@ class wasm_processor_t(idaapi.processor_t):
         ctx.flush_outbuf()
 
     @ida_entry
-    def notify_ana(self, insn):
+    def ev_ana_insn(self, insn):
         """
         decodes an instruction and place it into the given insn.
 
