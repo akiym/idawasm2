@@ -506,7 +506,7 @@ class wasm_processor_t(idaapi.processor_t):
         self.deferred_flows = {}
 
         for function in self.functions.values():
-            name = function['name'].encode('utf-8')
+            name = function['name']
             if 'offset' in function:
                 idc.set_name(function['offset'], name, idc.SN_CHECK)
                 # notify_emu will be invoked from here.
@@ -1101,15 +1101,13 @@ class wasm_processor_t(idaapi.processor_t):
         if wasm.opcodes.OPCODE_MAP.get(opb).imm_struct:
             # opcode has operands that we must decode
 
-            # warning: py2.7-specific
             # can't usually just cast the bytearray to a string without explicit decode.
             # assumption: instruction will be less than 0x10 bytes.
-            buf = str(bytearray(idc.get_bytes(insn.ea, 0x10)))
+            buf = bytes(bytearray(idc.get_bytes(insn.ea, 0x10)))
         else:
             # single byte instruction
 
-            # warning: py2.7-specific
-            buf = str(bytearray([opb]))
+            buf = bytes(bytearray([opb]))
 
         bc = next(wasm.decode_bytecode(buf))
         for _ in range(1, bc.len):
@@ -1272,12 +1270,12 @@ class wasm_processor_t(idaapi.processor_t):
                 'opcode': op.id,
                 # the IDA constant for this instruction
                 'id': i,
-                # danger: this must be an ASCII-encoded byte string, *not* unicode!
-                'name': op.mnemonic.encode('ascii'),
+                # danger: this must be bytes
+                'name': op.mnemonic.encode(),
                 'feature': op.flags,
                 'cmt': idawasm.const.WASM_OPCODE_DESCRIPTIONS.get(op.id),
             }
-            clean_mnem = op.mnemonic.encode('ascii').replace('.', '_').replace('/', '_').upper()
+            clean_mnem = op.mnemonic.replace('.', '_').replace('/', '_').upper()
             # the itype constant value must be contiguous, which sucks, because its not the op.id value.
             setattr(self, 'itype_' + clean_mnem, i)
 
