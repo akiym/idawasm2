@@ -201,8 +201,8 @@ class wasm_processor_t(idaapi.processor_t):
         block_stack = []
         p = offset
 
-        for bc in wasm.decode.decode_bytecode(code):
-            if bc.op.id in {wasm.opcodes.OP_BLOCK, wasm.opcodes.OP_LOOP, wasm.opcodes.OP_IF}:
+        for bc in wasm.decode_bytecode(code):
+            if bc.op.id in {wasm.OP_BLOCK, wasm.OP_LOOP, wasm.OP_IF}:
                 # enter a new block, so capture info, and push it onto the current depth stack
                 block_index = len(blocks)
                 block = {
@@ -210,9 +210,9 @@ class wasm_processor_t(idaapi.processor_t):
                     'offset': p,
                     'depth': len(block_stack),
                     'type': {
-                        wasm.opcodes.OP_BLOCK: 'block',
-                        wasm.opcodes.OP_LOOP: 'loop',
-                        wasm.opcodes.OP_IF: 'if',
+                        wasm.OP_BLOCK: 'block',
+                        wasm.OP_LOOP: 'loop',
+                        wasm.OP_IF: 'if',
                     }[bc.op.id],
                 }
                 blocks[block_index] = block
@@ -222,7 +222,7 @@ class wasm_processor_t(idaapi.processor_t):
                     'block': block
                 }
 
-            elif bc.op.id in {wasm.opcodes.OP_END}:
+            elif bc.op.id in {wasm.OP_END}:
                 if len(block_stack) == 0:
                     # end of function
                     branch_targets[p] = {
@@ -244,18 +244,18 @@ class wasm_processor_t(idaapi.processor_t):
                     'block': block
                 }
 
-            elif bc.op.id in {wasm.opcodes.OP_BR, wasm.opcodes.OP_BR_IF}:
+            elif bc.op.id in {wasm.OP_BR, wasm.OP_BR_IF}:
                 block_index = block_stack[bc.imm.relative_depth]
                 block = blocks[block_index]
                 branch_targets[p] = {
                     bc.imm.relative_depth: block
                 }
 
-            elif bc.op.id in {wasm.opcodes.OP_ELSE}:
+            elif bc.op.id in {wasm.OP_ELSE}:
                 # TODO: not exactly sure of the semantics here
                 raise NotImplementedError('else')
 
-            elif bc.op.id in {wasm.opcodes.OP_BR_TABLE}:
+            elif bc.op.id in {wasm.OP_BR_TABLE}:
                 # TODO: not exactly sure what one of these looks like yet.
                 raise NotImplementedError('br table')
                 # probably will populate `branch_targets` with multiple entries
@@ -478,7 +478,7 @@ class wasm_processor_t(idaapi.processor_t):
             buf.append(idc.get_bytes(idc.get_segm_start(ea), idc.get_segm_end(ea) - idc.get_segm_start(ea)))
 
         self.buf = b''.join(buf)
-        self.sections = list(wasm.decode.decode_module(self.buf))
+        self.sections = list(wasm.decode_module(self.buf))
 
         logger.info('parsing types')
         self.types = self._parse_types()
@@ -812,7 +812,7 @@ class wasm_processor_t(idaapi.processor_t):
 
         # handle other RETURN and UNREACHABLE instructions.
         # tbh, not sure how we'd encounter another RETURN, but we'll be safe.
-        elif insn.get_canon_feature() & wasm.opcodes.INSN_NO_FLOW:
+        elif insn.get_canon_feature() & wasm.INSN_NO_FLOW:
             return 1
 
         # handle an unconditional branch not at the end of a black.
@@ -1112,7 +1112,7 @@ class wasm_processor_t(idaapi.processor_t):
             # warning: py2.7-specific
             buf = str(bytearray([opb]))
 
-        bc = next(wasm.decode.decode_bytecode(buf))
+        bc = next(wasm.decode_bytecode(buf))
         for _ in range(1, bc.len):
             # consume any additional bytes.
             # this is how IDA knows the size of the insn.
