@@ -858,7 +858,7 @@ class wasm_processor_t(idaapi.processor_t):
     @ida_entry
     def ev_out_operand(self, ctx, op):
         """
-        Generate text representation of an instructon operand.
+        Generate text representation of an instruction operand.
         This function shouldn't change the database, flags or anything else.
         All these actions should be performed only by u_emu() function.
         The output text is placed in the output buffer initialized with init_output_buffer()
