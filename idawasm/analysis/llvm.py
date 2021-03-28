@@ -244,7 +244,7 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
             - offset (int): offset into the bitcode of the reference instruction.
             - parameter (int, optional): the parameter index being loaded.
         """
-        buf = ida_bytes.get_many_bytes(function['offset'], function['size'])
+        buf = ida_bytes.get_bytes(function['offset'], function['size'])
         bc = list(wasm.decode.decode_bytecode(buf))
 
         offset = function['offset']
@@ -291,7 +291,7 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
         if function['size'] <= self.PROLOGUE_SIZE:
             return False
 
-        prologue = ida_bytes.get_many_bytes(function['offset'], self.PROLOGUE_SIZE)
+        prologue = ida_bytes.get_bytes(function['offset'], self.PROLOGUE_SIZE)
         prologue_bc = list(itertools.islice(wasm.decode.decode_bytecode(prologue), 8))
         prologue_mnems = list(map(lambda bc: bc.op.id, prologue_bc))
 
@@ -329,7 +329,7 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
         if not self.has_llvm_prologue(function):
             return
 
-        buf = ida_bytes.get_many_bytes(function['offset'], self.PROLOGUE_SIZE)
+        buf = ida_bytes.get_bytes(function['offset'], self.PROLOGUE_SIZE)
         bc = list(itertools.islice(wasm.decode.decode_bytecode(buf), 8))
 
         global_frame_pointer = bc[0].imm.global_index
