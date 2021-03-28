@@ -1,4 +1,4 @@
-'''
+"""
 IDA Pro plugin that emulates WebAssembly instructions and shows their effects.
 
 Usage:
@@ -19,11 +19,13 @@ Notes:
 This plugin supports a subset of the WebAssembly opcodes.
 Currently it does not implement branching or comparison instructions.
 Therefore, you should select instructions within a single basic block.
-'''
+"""
 import logging
 
 import ida_bytes
+import ida_name
 import idaapi
+import idc
 import netnode
 import wasm
 import wasm.decode
@@ -33,10 +35,10 @@ logger = logging.getLogger('wasm-emu')
 
 
 def get_type_sort_order(v):
-    '''
+    """
     when ordering a list of (possibly complex) values, prefer:
       binary-op < memory < global < local-var < i32
-    '''
+    """
     if isinstance(v, BinaryOperation):
         return 1
     elif isinstance(v, Memory):
@@ -52,12 +54,12 @@ def get_type_sort_order(v):
 
 
 def cmp(a, b):
-    '''
+    """
     define a general purpose ordering for (possibly complex) values.
 
     useful when rendering the memory map, which has signature Dict[Any, Any],
-     where the key is any of our types or nodes (I32, LocalVarable, etc).
-    '''
+     where the key is any of our types or nodes (I32, LocalVariable, etc).
+    """
     at = get_type_sort_order(a)
     bt = get_type_sort_order(b)
 
@@ -532,7 +534,7 @@ def main():
     # find mappings from "$localN" to "custom_name"
     regvars = {}
     for i in range(0x1000):
-        regvar = idaapi.find_regvar(f, sel_start, '$local%d' % (i))
+        regvar = idaapi.find_regvar(f, sel_start, '$local%d' % i)
         if regvar is None:
             continue
         regvars[regvar.canon] = regvar.user
