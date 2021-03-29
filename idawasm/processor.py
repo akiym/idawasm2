@@ -9,10 +9,15 @@ import functools
 import logging
 from typing import Any
 
+import ida_bytes
+import ida_entry
 import ida_funcs
+import ida_name
+import ida_segment
+import ida_ua
+import ida_xref
 import idaapi
 import idautils
-import idc
 import netnode
 import wasm
 import wasm.wasmtypes
@@ -64,7 +69,7 @@ def no_exceptions(f):
 
 
 # tags functions that are invoked from IDA-land.
-ida_entry = no_exceptions
+ida_entry_point = no_exceptions
 
 
 class wasm_processor_t(idaapi.processor_t):
@@ -478,7 +483,9 @@ class wasm_processor_t(idaapi.processor_t):
         buf = []
         for ea in idautils.Segments():
             # assume all the segments are contiguous, which is what our loader does
-            buf.append(idc.get_bytes(idc.get_segm_start(ea), idc.get_segm_end(ea) - idc.get_segm_start(ea)))
+            seg = ida_segment.getseg(ea)
+            if seg:
+                buf.append(ida_bytes.get_bytes(seg.start_ea, seg.end_ea - seg.start_ea))
 
         self.buf = b''.join(buf)
         self.sections = list(wasm.decode_module(self.buf))
@@ -511,19 +518,19 @@ class wasm_processor_t(idaapi.processor_t):
         for function in self.functions.values():
             name = function['name']
             if 'offset' in function:
-                idc.set_name(function['offset'], name, idc.SN_CHECK)
+                ida_name.set_name(function['offset'], name, ida_name.SN_CHECK)
                 # notify_emu will be invoked from here.
-                idc.create_insn(function['offset'])
+                ida_ua.create_insn(function['offset'])
                 ida_funcs.add_func(function['offset'], function['offset'] + function['size'])
 
             if function.get('exported'):
                 # TODO: this should really be done in the loader.
                 # though, at the moment, we do a lot more analysis here in the processor.
-                idc.add_entry(function['index'], function['offset'], name, True)
+                ida_entry.add_entry(function['index'], function['offset'], name, True)
 
-            # TODO: idc.add_entry for the start routine. need an example of this.
+            # TODO: ida_entry.add_entry for the start routine. need an example of this.
 
-    @ida_entry
+    @ida_entry_point
     def ev_newfile(self, filename):
         """
         handle file being analyzed for the first time.
@@ -544,7 +551,7 @@ class wasm_processor_t(idaapi.processor_t):
             else:
                 logger.debug('%s declined analysis', Analyzer.__name__)
 
-    @ida_entry
+    @ida_entry_point
     def ev_oldfile(self, filename):
         """
         handle file loaded from existing .idb database.
@@ -552,14 +559,14 @@ class wasm_processor_t(idaapi.processor_t):
         logger.info('existing database: %s', filename)
         self.load()
 
-    @ida_entry
+    @ida_entry_point
     def savebase(self):
         """
         the database is being saved.
         """
         logger.info('saving wasm processor state.')
 
-    @ida_entry
+    @ida_entry_point
     def ev_endbinary(self, ok):
         """
          After loading a binary file
@@ -568,7 +575,7 @@ class wasm_processor_t(idaapi.processor_t):
         """
         logger.info('wasm module loaded.')
 
-    @ida_entry
+    @ida_entry_point
     def ev_get_autocmt(self, insn):
         """
         fetch instruction auto-comment.
@@ -579,7 +586,7 @@ class wasm_processor_t(idaapi.processor_t):
         if 'cmt' in self.instruc[insn.itype]:
             return self.instruc[insn.itype]['cmt']
 
-    @ida_entry
+    @ida_entry_point
     def ev_may_be_func(self, insn, state):
         """
         can a function start at the given instruction?
@@ -706,7 +713,7 @@ class wasm_processor_t(idaapi.processor_t):
 
         return 1
 
-    @ida_entry
+    @ida_entry_point
     def ev_emu_insn(self, insn):
         """
         Emulate instruction, create cross-references, plan to analyze
@@ -770,9 +777,9 @@ class wasm_processor_t(idaapi.processor_t):
 
             global_va = self.globals[op.value]['offset']
             if insn.itype == self.itype_SET_GLOBAL:
-                idc.add_dref(insn.ea, global_va, idc.dr_W)
+                ida_xref.add_dref(insn.ea, global_va, ida_xref.dr_W)
             elif insn.itype == self.itype_GET_GLOBAL:
-                idc.add_dref(insn.ea, global_va, idc.dr_R)
+                ida_xref.add_dref(insn.ea, global_va, ida_xref.dr_R)
             else:
                 raise RuntimeError('unexpected instruction referencing global: ' + str(insn))
 
@@ -843,7 +850,7 @@ class wasm_processor_t(idaapi.processor_t):
         else:
             idaapi.add_cref(insn.ea, insn.ea + insn.size, idaapi.fl_F)
 
-    @ida_entry
+    @ida_entry_point
     def out_mnem(self, ctx):
         postfix = ''
         ctx.out_mnem(20, postfix)
@@ -858,7 +865,7 @@ class wasm_processor_t(idaapi.processor_t):
                 return f
         raise KeyError(ea)
 
-    @ida_entry
+    @ida_entry_point
     def ev_out_operand(self, ctx, op):
         """
         Generate text representation of an instruction operand.
@@ -986,7 +993,7 @@ class wasm_processor_t(idaapi.processor_t):
         # error case
         return False
 
-    @ida_entry
+    @ida_entry_point
     def ev_out_insn(self, ctx):
         """
         must not change the database.
@@ -1077,7 +1084,7 @@ class wasm_processor_t(idaapi.processor_t):
         ctx.set_gen_cmt()
         ctx.flush_outbuf()
 
-    @ida_entry
+    @ida_entry_point
     def ev_ana_insn(self, insn):
         """
         decodes an instruction and place it into the given insn.
@@ -1106,7 +1113,7 @@ class wasm_processor_t(idaapi.processor_t):
 
             # can't usually just cast the bytearray to a string without explicit decode.
             # assumption: instruction will be less than 0x10 bytes.
-            buf = idc.get_bytes(insn.ea, 0x10)
+            buf = ida_bytes.get_bytes(insn.ea, 0x10)
         else:
             # single byte instruction
 
