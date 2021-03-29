@@ -36,7 +36,7 @@ def accept_file(f: ida_idaapi.loader_input_t, n: Any) -> Union[str, int]:
         # only support v1 right now
         return 0
 
-    return 'WebAssembly v%d executable' % (0x1)
+    return 'WebAssembly v%d executable' % 0x1
 
 
 def MakeN(addr: int, size: int) -> None:

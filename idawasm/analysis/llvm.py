@@ -343,7 +343,7 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
         frame_references = self.find_function_frame_references(function, local_frame_pointer)
         for frame_offset, refs in frame_references.items():
 
-            member_name = 'field_%x' % (frame_offset)
+            member_name = 'field_%x' % frame_offset
             for ref in refs:
                 if 'parameter' in ref:
                     member_name = 'param%d' % (ref['parameter'])
