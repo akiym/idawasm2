@@ -12,11 +12,12 @@ from typing import Any
 import ida_bytes
 import ida_entry
 import ida_funcs
+import ida_idp
+import ida_lines
 import ida_name
 import ida_segment
 import ida_ua
 import ida_xref
-import idaapi
 import idautils
 import netnode
 import wasm
@@ -31,12 +32,12 @@ from idawasm.types import Function
 logger = logging.getLogger(__name__)
 
 # these are wasm-specific operand types
-WASM_LOCAL = idaapi.o_idpspec0
-WASM_GLOBAL = idaapi.o_idpspec1
-WASM_FUNC_INDEX = idaapi.o_idpspec2
-WASM_TYPE_INDEX = idaapi.o_idpspec3
-WASM_BLOCK = idaapi.o_idpspec4
-WASM_ALIGN = idaapi.o_idpspec5
+WASM_LOCAL = ida_ua.o_idpspec0
+WASM_GLOBAL = ida_ua.o_idpspec1
+WASM_FUNC_INDEX = ida_ua.o_idpspec2
+WASM_TYPE_INDEX = ida_ua.o_idpspec3
+WASM_BLOCK = ida_ua.o_idpspec4
+WASM_ALIGN = ida_ua.o_idpspec5
 
 
 def no_exceptions(f):
@@ -72,11 +73,11 @@ def no_exceptions(f):
 ida_entry_point = no_exceptions
 
 
-class wasm_processor_t(idaapi.processor_t):
+class wasm_processor_t(ida_idp.processor_t):
     # processor ID for the wasm disassembler.
     # I made this number up.
     id = 0x8069
-    flag = idaapi.PR_USE32 | idaapi.PR_RNAMESOK | idaapi.PRN_HEX | idaapi.PR_NO_SEGMOVE
+    flag = ida_idp.PR_USE32 | ida_idp.PR_RNAMESOK | ida_idp.PRN_HEX | ida_idp.PR_NO_SEGMOVE
     cnbits = 8
     dnbits = 8
     psnames = ['wasm']
@@ -84,7 +85,7 @@ class wasm_processor_t(idaapi.processor_t):
     segreg_size = 0
     tbyte_size = 0
     assembler = {
-        'flag': idaapi.ASH_HEXF3 | idaapi.AS_UNEQU | idaapi.AS_COLON | idaapi.ASB_BINF4 | idaapi.AS_N2CHR,
+        'flag': ida_idp.ASH_HEXF3 | ida_idp.AS_UNEQU | ida_idp.AS_COLON | ida_idp.ASB_BINF4 | ida_idp.AS_N2CHR,
         'uflag': 0,
         'name': "WebAssembly assembler",
         'origin': "org",
@@ -128,10 +129,12 @@ class wasm_processor_t(idaapi.processor_t):
         returns OOFW_xxx flag given a dt_xxx
         """
         return {
-            idaapi.dt_byte: idaapi.OOFW_8,
-            idaapi.dt_word: idaapi.OOFW_16,
-            idaapi.dt_dword: idaapi.OOFW_32,
-            idaapi.dt_qword: idaapi.OOFW_64,
+            ida_ua.dt_byte: ida_ua.OOFW_8,
+            ida_ua.dt_word: ida_ua.OOFW_16,
+            ida_ua.dt_dword: ida_ua.OOFW_32,
+            ida_ua.dt_qword: ida_ua.OOFW_64,
+            ida_ua.dt_float: ida_ua.OOFW_32,
+            ida_ua.dt_double: ida_ua.OOFW_64,
         }[dt]
 
     def _get_section(self, section_id) -> Structure:
@@ -603,7 +606,7 @@ class wasm_processor_t(idaapi.processor_t):
         # unconditional branch followed by END.
 
         # BR flows to the END
-        idaapi.add_cref(insn.ea, insn.ea + insn.size, idaapi.fl_F)
+        ida_xref.add_cref(insn.ea, insn.ea + insn.size, ida_xref.fl_F)
 
         # unconditional branch, so END does not flow to following instruction
         self.deferred_noflows[next.ea] = True
@@ -613,13 +616,13 @@ class wasm_processor_t(idaapi.processor_t):
             targets = self.branch_targets[insn.ea]
             target_block = targets[insn.Op1.value]
             target_va = target_block['end_offset']
-            self.deferred_flows[next.ea] = [(next.ea, target_va, idaapi.fl_JF)]
+            self.deferred_flows[next.ea] = [(next.ea, target_va, ida_xref.fl_JF)]
 
         return 1
 
     def notify_emu_BR_IF_END(self, insn, next):
         # BR_IF flows to the END
-        idaapi.add_cref(insn.ea, insn.ea + insn.size, idaapi.fl_F)
+        ida_xref.add_cref(insn.ea, insn.ea + insn.size, ida_xref.fl_F)
 
         # conditional branch, so there will be a fallthrough flow.
         # the default behavior of `end` is to fallthrough, so don't change that.
@@ -630,13 +633,13 @@ class wasm_processor_t(idaapi.processor_t):
             targets = self.branch_targets[insn.ea]
             target_block = targets[insn.Op1.value]
             target_va = target_block['end_offset']
-            self.deferred_flows[next.ea] = [(next.ea, target_va, idaapi.fl_JF)]
+            self.deferred_flows[next.ea] = [(next.ea, target_va, ida_xref.fl_JF)]
 
         return 1
 
     def notify_emu_RETURN_END(self, insn, next):
         # the RETURN will fallthrough to END,
-        idaapi.add_cref(insn.ea, insn.ea + insn.size, idaapi.fl_F)
+        ida_xref.add_cref(insn.ea, insn.ea + insn.size, ida_xref.fl_F)
 
         # but the END will not fallthrough.
         self.deferred_noflows[next.ea] = True
@@ -654,27 +657,27 @@ class wasm_processor_t(idaapi.processor_t):
             targets = self.branch_targets[insn.ea]
             target_block = targets[insn.Op1.value]
             target_va = target_block['end_offset']
-            idaapi.add_cref(insn.ea, target_va, idaapi.fl_JF)
+            ida_xref.add_cref(insn.ea, target_va, ida_xref.fl_JF)
 
         return 1
 
     def notify_emu_BR_IF(self, insn):
         # handle a conditional branch not at the end of a block.
         # fallthrough flow
-        idaapi.add_cref(insn.ea, insn.ea + insn.size, idaapi.fl_F)
+        ida_xref.add_cref(insn.ea, insn.ea + insn.size, ida_xref.fl_F)
 
         # branch target
         if insn.ea in self.branch_targets:
             targets = self.branch_targets[insn.ea]
             target_block = targets[insn.Op1.value]
             target_va = target_block['end_offset']
-            idaapi.add_cref(insn.ea, target_va, idaapi.fl_JF)
+            ida_xref.add_cref(insn.ea, target_va, ida_xref.fl_JF)
 
         return 1
 
     def notify_emu_END(self, insn):
         for flow in self.deferred_flows.get(insn.ea, []):
-            idaapi.add_cref(*flow)
+            ida_xref.add_cref(*flow)
 
         if insn.ea in self.branch_targets:
             targets = self.branch_targets[insn.ea]
@@ -686,7 +689,7 @@ class wasm_processor_t(idaapi.processor_t):
 
                 # branch back to top of loop
                 target_va = block['offset']
-                idaapi.add_cref(insn.ea, target_va, idaapi.fl_JF)
+                ida_xref.add_cref(insn.ea, target_va, ida_xref.fl_JF)
 
             elif block['type'] == 'if':
                 # end of if
@@ -701,7 +704,7 @@ class wasm_processor_t(idaapi.processor_t):
                 #
                 # the RETURN is the end of the function, so no flow after the END.
                 if insn.ea not in self.deferred_noflows:
-                    idaapi.add_cref(insn.ea, insn.ea + insn.size, idaapi.fl_F)
+                    ida_xref.add_cref(insn.ea, insn.ea + insn.size, ida_xref.fl_F)
 
             elif block['type'] == 'function':
                 # end of function
@@ -768,7 +771,7 @@ class wasm_processor_t(idaapi.processor_t):
 
         # add drefs to globals
         for op in insn.ops:
-            if not (op.type == idaapi.o_imm and op.specval == WASM_GLOBAL):
+            if not (op.type == ida_ua.o_imm and op.specval == WASM_GLOBAL):
                 continue
 
             if op.value not in self.globals:
@@ -848,7 +851,7 @@ class wasm_processor_t(idaapi.processor_t):
 
         # default behavior: fallthrough
         else:
-            idaapi.add_cref(insn.ea, insn.ea + insn.size, idaapi.fl_F)
+            ida_xref.add_cref(insn.ea, insn.ea + insn.size, ida_xref.fl_F)
 
     @ida_entry_point
     def out_mnem(self, ctx):
@@ -891,7 +894,7 @@ class wasm_processor_t(idaapi.processor_t):
                                 }[op.value])
             return True
 
-        elif op.type == idaapi.o_reg:
+        elif op.type == ida_ua.o_reg:
             wtype = op.specval
             if wtype == WASM_LOCAL:
                 # output a function-local "register".
@@ -911,7 +914,7 @@ class wasm_processor_t(idaapi.processor_t):
                     ctx.out_register('$local%d' % op.reg)
                 return True
 
-        elif op.type == idaapi.o_imm:
+        elif op.type == ida_ua.o_imm:
             wtype = op.specval
             if wtype == WASM_GLOBAL:
                 # output a reference to a global variable.
@@ -982,12 +985,12 @@ class wasm_processor_t(idaapi.processor_t):
                 #                                    this thing
                 ctx.out_keyword('align:')
                 width = self.dt_to_width(op.dtype)
-                ctx.out_value(op, idaapi.OOFW_IMM | width)
+                ctx.out_value(op, ida_ua.OOFW_IMM | width)
                 return True
 
             else:
                 width = self.dt_to_width(op.dtype)
-                ctx.out_value(op, idaapi.OOFW_IMM | width)
+                ctx.out_value(op, ida_ua.OOFW_IMM | width)
                 return True
 
         # error case
@@ -1035,7 +1038,7 @@ class wasm_processor_t(idaapi.processor_t):
         for i in range(1, 3):
             op = insn[i]
 
-            if op.type == idaapi.o_void:
+            if op.type == ida_ua.o_void:
                 break
 
             ctx.out_symbol(',')
@@ -1076,10 +1079,10 @@ class wasm_processor_t(idaapi.processor_t):
             targets = self.branch_targets[ea]
             block = targets['block']
             if block['type'] in ('block', 'loop'):
-                ctx.out_tagon(idaapi.COLOR_UNAME)
+                ctx.out_tagon(ida_lines.COLOR_UNAME)
                 for c in ("$" + block['type'] + str(block['index'])):
                     ctx.out_char(c)
-                ctx.out_tagoff(idaapi.COLOR_UNAME)
+                ctx.out_tagoff(ida_lines.COLOR_UNAME)
 
         ctx.set_gen_cmt()
         ctx.flush_outbuf()
@@ -1090,7 +1093,7 @@ class wasm_processor_t(idaapi.processor_t):
         decodes an instruction and place it into the given insn.
 
         Args:
-          insn (idaapi.insn_t): the instruction to populate.
+          insn (ida_ua.insn_t): the instruction to populate.
 
         Returns:
           int: size of insn on success, 0 on failure.
@@ -1125,8 +1128,8 @@ class wasm_processor_t(idaapi.processor_t):
             # this is how IDA knows the size of the insn.
             insn.get_next_byte()
 
-        insn.Op1.type = idaapi.o_void
-        insn.Op2.type = idaapi.o_void
+        insn.Op1.type = ida_ua.o_void
+        insn.Op2.type = ida_ua.o_void
 
         # decode instruction operand.
         # as of today (V1), there's at most a single operand.
@@ -1144,7 +1147,7 @@ class wasm_processor_t(idaapi.processor_t):
         if bc.imm is not None:
             immtype = bc.imm.get_meta().structure
 
-            SHOW_FLAGS = idaapi.OF_NO_BASE_DISP | idaapi.OF_NUMBER | idaapi.OF_SHOW
+            SHOW_FLAGS = ida_ua.OF_NO_BASE_DISP | ida_ua.OF_NUMBER | ida_ua.OF_SHOW
 
             # wasm is currently single-byte opcode only
             # therefore the first operand must be found at offset 0x1.
@@ -1157,116 +1160,116 @@ class wasm_processor_t(idaapi.processor_t):
             if immtype == wasm.immtypes.BlockImm:
                 # sig = BlockTypeField()
                 insn.Op1.type = WASM_BLOCK
-                insn.Op1.dtype = idaapi.dt_dword
+                insn.Op1.dtype = ida_ua.dt_dword
                 insn.Op1.value = bc.imm.sig
                 insn.Op1.specval = WASM_BLOCK
 
             elif immtype == wasm.immtypes.BranchImm:
                 # relative_depth = VarUInt32Field()
-                insn.Op1.type = idaapi.o_imm
-                insn.Op1.dtype = idaapi.dt_dword
+                insn.Op1.type = ida_ua.o_imm
+                insn.Op1.dtype = ida_ua.dt_dword
                 insn.Op1.value = bc.imm.relative_depth
 
             elif immtype == wasm.immtypes.BranchTableImm:
                 # target_count = VarUInt32Field()
                 # target_table = RepeatField(VarUInt32Field(), lambda x: x.target_count)
                 # default_target = VarUInt32Field()
-                insn.Op1.type = idaapi.o_imm
-                insn.Op1.dtype = idaapi.dt_dword
+                insn.Op1.type = ida_ua.o_imm
+                insn.Op1.dtype = ida_ua.dt_dword
                 insn.Op1.value = bc.imm.target_count
 
-                insn.Op2.type = idaapi.o_imm
+                insn.Op2.type = ida_ua.o_imm
                 insn.Op2.offb = 1  # TODO(wb): fixup offset of Op2
                 insn.Op2.offo = 1  # TODO(wb): fixup offset of Op2
                 insn.Op2.flags = SHOW_FLAGS
-                insn.Op2.dtype = idaapi.dt_dword
+                insn.Op2.dtype = ida_ua.dt_dword
                 insn.Op2.value = bc.imm.target_table
 
-                insn.Op3.type = idaapi.o_imm
+                insn.Op3.type = ida_ua.o_imm
                 insn.Op3.offb = 1  # TODO(wb): fixup offset of Op3
                 insn.Op3.offo = 1  # TODO(wb): fixup offset of Op3
                 insn.Op3.flags = SHOW_FLAGS
-                insn.Op3.dtype = idaapi.dt_dword
+                insn.Op3.dtype = ida_ua.dt_dword
                 insn.Op3.value = bc.imm.default_target
 
             elif immtype == wasm.immtypes.CallImm:
                 # function_index = VarUInt32Field()
-                insn.Op1.type = idaapi.o_imm
-                insn.Op1.dtype = idaapi.dt_dword
+                insn.Op1.type = ida_ua.o_imm
+                insn.Op1.dtype = ida_ua.dt_dword
                 insn.Op1.value = bc.imm.function_index
                 insn.Op1.specval = WASM_FUNC_INDEX
 
             elif immtype == wasm.immtypes.CallIndirectImm:
                 # type_index = VarUInt32Field()
                 # reserved = VarUInt1Field()
-                insn.Op1.type = idaapi.o_imm
-                insn.Op1.dtype = idaapi.dt_dword
+                insn.Op1.type = ida_ua.o_imm
+                insn.Op1.dtype = ida_ua.dt_dword
                 insn.Op1.value = bc.imm.type_index
                 insn.Op1.specval = WASM_TYPE_INDEX
 
-                insn.Op2.type = idaapi.o_imm
+                insn.Op2.type = ida_ua.o_imm
                 insn.Op2.offb = 1  # TODO(wb): fixup offset of Op2
                 insn.Op2.offo = 1  # TODO(wb): fixup offset of Op2
                 insn.Op2.flags = SHOW_FLAGS
-                insn.Op2.dtype = idaapi.dt_dword
+                insn.Op2.dtype = ida_ua.dt_dword
                 insn.Op2.value = bc.imm.reserved
 
             elif immtype == wasm.immtypes.LocalVarXsImm:
                 # local_index = VarUInt32Field()
-                insn.Op1.type = idaapi.o_reg
+                insn.Op1.type = ida_ua.o_reg
                 insn.Op1.reg = bc.imm.local_index
                 insn.Op1.specval = WASM_LOCAL
 
             elif immtype == wasm.immtypes.GlobalVarXsImm:
                 # global_index = VarUInt32Field()
-                insn.Op1.type = idaapi.o_imm
-                insn.Op1.dtype = idaapi.dt_dword
+                insn.Op1.type = ida_ua.o_imm
+                insn.Op1.dtype = ida_ua.dt_dword
                 insn.Op1.value = bc.imm.global_index
                 insn.Op1.specval = WASM_GLOBAL
 
             elif immtype == wasm.immtypes.MemoryImm:
                 # flags = VarUInt32Field()
                 # offset = VarUInt32Field()
-                insn.Op1.type = idaapi.o_imm
-                insn.Op1.dtype = idaapi.dt_dword
+                insn.Op1.type = ida_ua.o_imm
+                insn.Op1.dtype = ida_ua.dt_dword
                 insn.Op1.value = bc.imm.offset
 
-                insn.Op2.type = idaapi.o_imm
+                insn.Op2.type = ida_ua.o_imm
                 insn.Op2.offb = 1  # TODO(wb): fixup offset of Op2
                 insn.Op2.offo = 1  # TODO(wb): fixup offset of Op2
                 insn.Op2.flags = SHOW_FLAGS
-                insn.Op2.dtype = idaapi.dt_dword
+                insn.Op2.dtype = ida_ua.dt_dword
                 insn.Op2.value = bc.imm.flags
                 insn.Op2.specval = WASM_ALIGN
 
             elif immtype == wasm.immtypes.CurGrowMemImm:
                 # reserved = VarUInt1Field()
-                insn.Op1.type = idaapi.o_imm
-                insn.Op1.dtype = idaapi.dt_dword
+                insn.Op1.type = ida_ua.o_imm
+                insn.Op1.dtype = ida_ua.dt_dword
                 insn.Op1.value = bc.imm.reserved
 
             elif immtype == wasm.immtypes.I32ConstImm:
                 # value = VarInt32Field()
-                insn.Op1.type = idaapi.o_imm
-                insn.Op1.dtype = idaapi.dt_dword
+                insn.Op1.type = ida_ua.o_imm
+                insn.Op1.dtype = ida_ua.dt_dword
                 insn.Op1.value = bc.imm.value
 
             elif immtype == wasm.immtypes.I64ConstImm:
                 # value = VarInt64Field()
-                insn.Op1.type = idaapi.o_imm
-                insn.Op1.dtype = idaapi.dt_qword
+                insn.Op1.type = ida_ua.o_imm
+                insn.Op1.dtype = ida_ua.dt_qword
                 insn.Op1.value = bc.imm.value
 
             elif immtype == wasm.immtypes.F32ConstImm:
                 # value = UInt32Field()
-                insn.Op1.type = idaapi.o_imm
-                insn.Op1.dtype = idaapi.dt_float
+                insn.Op1.type = ida_ua.o_imm
+                insn.Op1.dtype = ida_ua.dt_float
                 insn.Op1.value = bc.imm.value
 
             elif immtype == wasm.immtypes.F64ConstImm:
                 # value = UInt64Field()
-                insn.Op1.type = idaapi.o_imm
-                insn.Op1.dtype = idaapi.dt_double
+                insn.Op1.type = ida_ua.o_imm
+                insn.Op1.dtype = ida_ua.dt_double
                 insn.Op1.value = bc.imm.value
 
         return insn.size
@@ -1347,7 +1350,7 @@ class wasm_processor_t(idaapi.processor_t):
 
     def __init__(self):
         # this is called prior to loading a binary, so don't read from the database here.
-        idaapi.processor_t.__init__(self)
+        ida_idp.processor_t.__init__(self)
         self.PTRSZ = 4  # Assume PTRSZ = 4 by default
         self.init_instructions()
         self.init_registers()
