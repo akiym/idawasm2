@@ -10,7 +10,6 @@ import ida_name
 import ida_segment
 import ida_ua
 import wasm
-import wasm.decode
 import wasm.wasmtypes
 from wasm.decode import ModuleFragment
 from wasm.types import StructureData
@@ -272,7 +271,7 @@ def load_file(f: ida_idaapi.loader_input_t, neflags: Any, format: Any) -> int:
     f.file2base(0, 0, len(buf), True)
 
     p = 0
-    sections = wasm.decode.decode_module(buf)
+    sections = wasm.decode_module(buf)
     for i, section in enumerate(sections):
         if i == 0:
             sname = 'header'

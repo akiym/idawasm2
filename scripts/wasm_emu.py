@@ -468,21 +468,21 @@ class Emulator:
     def handle_insn(self, insn):
         logger.debug('trace: %s', insn.op.mnemonic)
         handler = {
-            wasm.opcodes.OP_I32_CONST: self.handle_I32_CONST,
-            wasm.opcodes.OP_I32_ADD: self.handle_I32_ADD,
-            wasm.opcodes.OP_I32_SUB: self.handle_I32_SUB,
-            wasm.opcodes.OP_I32_AND: self.handle_I32_AND,
-            wasm.opcodes.OP_I32_SHL: self.handle_I32_SHL,
-            wasm.opcodes.OP_I32_SHR_U: self.handle_I32_SHR_U,
-            wasm.opcodes.OP_I32_XOR: self.handle_I32_XOR,
-            wasm.opcodes.OP_I32_LOAD: self.handle_I32_LOAD,
-            wasm.opcodes.OP_I32_LOAD8_U: self.handle_I32_LOAD8_U,
-            wasm.opcodes.OP_I32_STORE: self.handle_I32_STORE,
-            wasm.opcodes.OP_I32_STORE8: self.handle_I32_STORE8,
-            wasm.opcodes.OP_SET_LOCAL: self.handle_SET_LOCAL,
-            wasm.opcodes.OP_GET_LOCAL: self.handle_GET_LOCAL,
-            wasm.opcodes.OP_SET_GLOBAL: self.handle_SET_GLOBAL,
-            wasm.opcodes.OP_GET_GLOBAL: self.handle_GET_GLOBAL,
+            wasm.OP_I32_CONST: self.handle_I32_CONST,
+            wasm.OP_I32_ADD: self.handle_I32_ADD,
+            wasm.OP_I32_SUB: self.handle_I32_SUB,
+            wasm.OP_I32_AND: self.handle_I32_AND,
+            wasm.OP_I32_SHL: self.handle_I32_SHL,
+            wasm.OP_I32_SHR_U: self.handle_I32_SHR_U,
+            wasm.OP_I32_XOR: self.handle_I32_XOR,
+            wasm.OP_I32_LOAD: self.handle_I32_LOAD,
+            wasm.OP_I32_LOAD8_U: self.handle_I32_LOAD8_U,
+            wasm.OP_I32_STORE: self.handle_I32_STORE,
+            wasm.OP_I32_STORE8: self.handle_I32_STORE8,
+            wasm.OP_SET_LOCAL: self.handle_SET_LOCAL,
+            wasm.OP_GET_LOCAL: self.handle_GET_LOCAL,
+            wasm.OP_SET_GLOBAL: self.handle_SET_GLOBAL,
+            wasm.OP_GET_GLOBAL: self.handle_GET_GLOBAL,
         }.get(insn.op.id, self.handle_DEFAULT)
         handler(insn)
 
