@@ -25,9 +25,10 @@ import logging
 import ida_bytes
 import ida_frame
 import ida_funcs
+import ida_idaapi
 import ida_kernwin
 import ida_name
-import idc
+import ida_struct
 import netnode
 import wasm
 import wasm.decode
@@ -521,7 +522,7 @@ def main():
         logger.error('range must be selected')
         return -1
 
-    sel_end = idc.NextHead(sel_end)
+    sel_end = ida_bytes.next_head(sel_end)
 
     buf = ida_bytes.get_bytes(sel_start, sel_end - sel_start)
     if buf is None:
@@ -549,12 +550,16 @@ def main():
         globals_['$global' + i] = ida_name.get_name(offset)
 
     frame = {}
-    if f.frame != idc.BADADDR:
+    if f.frame != ida_idaapi.BADADDR:
         names = set([])
-        for i in range(idc.GetStrucSize(f.frame)):
-            name = idc.GetMemberName(f.frame, i)
-            if not name:
+        for i in range(ida_struct.get_struc_size(f.frame)):
+            s = ida_struct.get_struc(f.frame)
+            if not s:
                 continue
+            m = ida_struct.get_member(s, i)
+            if not m:
+                continue
+            name = ida_struct.get_member_name(m.id)
             if name in names:
                 continue
             frame[i] = name

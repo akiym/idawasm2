@@ -6,8 +6,9 @@ import ida_bytes
 import ida_idaapi
 import ida_idp
 import ida_lines
+import ida_name
 import ida_segment
-import idc
+import ida_ua
 import wasm
 import wasm.decode
 import wasm.wasmtypes
@@ -162,7 +163,7 @@ def load_struc(struc: StructureData, p: int, path: str) -> int:
                 MakeN(p, field.size)
 
             # add comment containing human-readable representation
-            idc.set_cmt(p, format_value(name, field.value), 0)
+            ida_bytes.set_cmt(p, format_value(name, field.value), 0)
 
             p += field.size
 
@@ -205,9 +206,9 @@ def load_globals_section(section: ModuleFragment, p: int) -> None:
         #        i32.const    <---- init expression insns
         #        ret
         pinit = pcur + idawasm.common.offset_of(body, 'init')
-        idc.set_name(pinit, gname, idc.SN_CHECK)
+        ida_name.set_name(pinit, gname, ida_name.SN_CHECK)
         ida_lines.update_extra_cmt(pinit, ida_lines.E_PREV + 0, gname + '_init:')
-        idc.create_insn(pinit)
+        ida_ua.create_insn(pinit)
 
         pcur += idawasm.common.size_of(body)
 
@@ -220,7 +221,7 @@ def load_elements_section(section: ModuleFragment, p: int) -> None:
     pentries = ppayload + idawasm.common.offset_of(section.data.payload, 'entries')
     pcur = pentries
     for i, body in enumerate(section.data.payload.entries):
-        idc.create_insn(pcur + idawasm.common.offset_of(body, 'offset'))
+        ida_ua.create_insn(pcur + idawasm.common.offset_of(body, 'offset'))
         pcur += idawasm.common.size_of(body)
 
 
@@ -232,7 +233,7 @@ def load_data_section(section: ModuleFragment, p: int) -> None:
     pentries = ppayload + idawasm.common.offset_of(section.data.payload, 'entries')
     pcur = pentries
     for i, body in enumerate(section.data.payload.entries):
-        idc.create_insn(pcur + idawasm.common.offset_of(body, 'offset'))
+        ida_ua.create_insn(pcur + idawasm.common.offset_of(body, 'offset'))
         pcur += idawasm.common.size_of(body)
 
 
@@ -302,9 +303,9 @@ def load_file(f: ida_idaapi.loader_input_t, neflags: Any, format: Any) -> int:
 
     # magic
     ida_bytes.create_data(0x0, ida_bytes.FF_DWORD, 4, ida_idaapi.BADADDR)
-    idc.set_name(0x0, 'WASM_MAGIC', idc.SN_CHECK)
+    ida_name.set_name(0x0, 'WASM_MAGIC', ida_name.SN_CHECK)
     # version
     ida_bytes.create_data(0x4, ida_bytes.FF_DWORD, 4, ida_idaapi.BADADDR)
-    idc.set_name(0x4, 'WASM_VERSION', idc.SN_CHECK)
+    ida_name.set_name(0x4, 'WASM_VERSION', ida_name.SN_CHECK)
 
     return 1
