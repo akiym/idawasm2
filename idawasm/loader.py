@@ -191,7 +191,7 @@ def load_globals_section(section, p):
     pglobals = ppayload + idawasm.common.offset_of(section.data.payload, 'globals')
     pcur = pglobals
     for i, body in enumerate(section.data.payload.globals):
-        gname = 'global_%X' % (i)
+        gname = 'global_%X' % i
         # we need a target that people can rename.
         # so lets map `global_N` to the init expr field.
         # this will look like:
