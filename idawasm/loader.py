@@ -4,8 +4,9 @@ from typing import Any, Union, cast
 
 import ida_bytes
 import ida_idaapi
+import ida_idp
 import ida_lines
-import idaapi
+import ida_segment
 import idc
 import wasm
 import wasm.decode
@@ -263,7 +264,7 @@ def load_file(f: ida_idaapi.loader_input_t, neflags: Any, format: Any) -> int:
 
     # mark the proc type, so IDA can invoke the correct disassembler/processor.
     # this must match `processor.wasm_processor_t.psnames`
-    idaapi.set_processor_type('wasm', idaapi.SETPROC_LOADER_NON_FATAL)
+    ida_idp.set_processor_type('wasm', ida_idp.SETPROC_LOADER_NON_FATAL)
 
     f.seek(0x0)
     # load the entire file directly at address zero.
@@ -288,7 +289,7 @@ def load_file(f: ida_idaapi.loader_input_t, neflags: Any, format: Any) -> int:
 
         # add IDA segment with type, name, size as appropriate
         slen = sum(section.data.get_decoder_meta()['lengths'].values())
-        idaapi.add_segm(0, p, p + slen, sname, stype)
+        ida_segment.add_segm(0, p, p + slen, sname, stype)
 
         if sname != 'header':
             loader = SECTION_LOADERS.get(section.data.id)

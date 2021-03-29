@@ -23,8 +23,10 @@ Therefore, you should select instructions within a single basic block.
 import logging
 
 import ida_bytes
+import ida_frame
+import ida_funcs
+import ida_kernwin
 import ida_name
-import idaapi
 import idc
 import netnode
 import wasm
@@ -514,7 +516,7 @@ class Emulator:
 
 
 def main():
-    is_selected, sel_start, sel_end = idaapi.read_selection()
+    is_selected, sel_start, sel_end = ida_kernwin.read_selection()
     if not is_selected:
         logger.error('range must be selected')
         return -1
@@ -526,15 +528,15 @@ def main():
         logger.error('failed to fetch instruction bytes')
         return -1
 
-    f = idaapi.get_func(sel_start)
-    if f != idaapi.get_func(sel_end):
+    f = ida_funcs.get_func(sel_start)
+    if f != ida_funcs.get_func(sel_end):
         logger.error('range must be within a single function')
         return -1
 
     # find mappings from "$localN" to "custom_name"
     regvars = {}
     for i in range(0x1000):
-        regvar = idaapi.find_regvar(f, sel_start, '$local%d' % i)
+        regvar = ida_frame.find_regvar(f, sel_start, '$local%d' % i)
         if regvar is None:
             continue
         regvars[regvar.canon] = regvar.user
