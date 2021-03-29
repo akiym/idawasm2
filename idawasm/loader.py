@@ -1,5 +1,6 @@
 import os
 import struct
+from typing import Any, Union, cast
 
 import ida_bytes
 import ida_idaapi
@@ -9,12 +10,14 @@ import idc
 import wasm
 import wasm.decode
 import wasm.wasmtypes
+from wasm.decode import ModuleFragment
+from wasm.types import StructureData
 
 import idawasm.common
 import idawasm.const
 
 
-def accept_file(f, n):
+def accept_file(f: ida_idaapi.loader_input_t, n: Any) -> Union[str, int]:
     """
     return the name of the format, if it looks like a WebAssembly module, or 0 on unsupported.
 
@@ -36,7 +39,7 @@ def accept_file(f, n):
     return 'WebAssembly v%d executable' % (0x1)
 
 
-def MakeN(addr, size):
+def MakeN(addr: int, size: int) -> None:
     """
     Make a integer with the given size at the given address.
 
@@ -54,7 +57,7 @@ def MakeN(addr, size):
         ida_bytes.create_data(addr, ida_bytes.FF_QWORD, 8, ida_idaapi.BADADDR)
 
 
-def get_section(sections, section_id):
+def get_section(sections: list[ModuleFragment], section_id: int) -> int:
     """
     given a sequence of sections, return the section with the given id.
     """
@@ -68,7 +71,7 @@ def get_section(sections, section_id):
         return section
 
 
-def format_value(name, value):
+def format_value(name: str, value: Any) -> str:
     """
     format the given value into something human readable, using the given name as a hint.
 
@@ -107,7 +110,7 @@ def format_value(name, value):
         return ''
 
 
-def load_struc(struc, p, path):
+def load_struc(struc: StructureData, p: int, path: str) -> int:
     """
     Load the given structure into the current IDA Pro at the given offset.
 
@@ -129,7 +132,7 @@ def load_struc(struc, p, path):
 
         # recurse into nested structures
         if idawasm.common.is_struc(field.value):
-            p = load_struc(field.value, p, name)
+            p = load_struc(cast(StructureData, field.value), p, name)
 
         # recurse into lists of structures
         elif (isinstance(field.value, list)
@@ -165,7 +168,7 @@ def load_struc(struc, p, path):
     return p
 
 
-def load_section(section, p):
+def load_section(section: ModuleFragment, p: int) -> None:
     """
     Load the given section into the current IDA Pro at the given offset.
 
@@ -174,7 +177,7 @@ def load_section(section, p):
         load_section(sections[0], 0x0)
 
     Args:
-      struc (wasm.Structure): the structure to load.
+      section (wasm.Structure): the structure to load.
       p (int): the effective address at which to load.
 
     Returns:
@@ -183,7 +186,7 @@ def load_section(section, p):
     load_struc(section.data, p, 'sections:' + str(section.data.id))
 
 
-def load_globals_section(section, p):
+def load_globals_section(section: ModuleFragment, p: int) -> None:
     """
     Specialized handler for the GLOBALS section to mark the initializer as code.
     """
@@ -208,7 +211,7 @@ def load_globals_section(section, p):
         pcur += idawasm.common.size_of(body)
 
 
-def load_elements_section(section, p):
+def load_elements_section(section: ModuleFragment, p: int) -> None:
     """
     Specialized handler for the ELEMENTS section to mark the offset initializer as code.
     """
@@ -220,7 +223,7 @@ def load_elements_section(section, p):
         pcur += idawasm.common.size_of(body)
 
 
-def load_data_section(section, p):
+def load_data_section(section: ModuleFragment, p: int) -> None:
     """
     specialized handler for the DATA section to mark the offset initializer as code.
     """
@@ -239,7 +242,7 @@ SECTION_LOADERS = {
 }
 
 
-def load_file(f, neflags, format):
+def load_file(f: ida_idaapi.loader_input_t, neflags: Any, format: Any) -> int:
     """
     load the given file into the current IDA Pro database.
 

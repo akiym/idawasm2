@@ -1,7 +1,10 @@
-import collections
+from collections.abc import Iterator
+from typing import Any, NamedTuple, Union
+
+from wasm.types import StructureData
 
 
-def offset_of(struc, fieldname):
+def offset_of(struc: StructureData, fieldname: str) -> int:
     """
     given a wasm struct instance and a field name, return the offset into the struct where you'd find the field.
     """
@@ -15,7 +18,7 @@ def offset_of(struc, fieldname):
     raise KeyError('field not found: ' + fieldname)
 
 
-def size_of(struc, fieldname=None):
+def size_of(struc: StructureData, fieldname: str = None) -> int:
     """
     given a wasm struct instance, compute the size of the element.
     if a field name is provided, fetch the size of the given field.
@@ -30,10 +33,14 @@ def size_of(struc, fieldname=None):
         return sum(struc.get_decoder_meta()['lengths'].values())
 
 
-Field = collections.namedtuple('Field', ['offset', 'name', 'size', 'value'])
+class Field(NamedTuple):
+    offset: int
+    name: str
+    size: int
+    value: Union[StructureData, list[StructureData], int]
 
 
-def get_fields(struc):
+def get_fields(struc: StructureData) -> Iterator[Field]:
     p = 0
     dec_meta = struc.get_decoder_meta()
     for field in struc.get_meta().fields:
@@ -43,7 +50,7 @@ def get_fields(struc):
         p += flen
 
 
-def is_struc(o):
+def is_struc(o: Any) -> bool:
     """
     does the given object look like a structure from the wasm library.
 
@@ -66,7 +73,7 @@ def is_struc(o):
     return '.GeneratedStructureData' in str(type(o))
 
 
-def struc_to_dict(struc):
+def struc_to_dict(struc: Any) -> Any:
     if isinstance(struc, str):
         return struc
     elif isinstance(struc, int):

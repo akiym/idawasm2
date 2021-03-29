@@ -57,7 +57,7 @@ def cmp(a, b):
     """
     define a general purpose ordering for (possibly complex) values.
 
-    useful when rendering the memory map, which has signature Dict[Any, Any],
+    useful when rendering the memory map, which has signature dict[Any, Any],
      where the key is any of our types or nodes (I32, LocalVariable, etc).
     """
     at = get_type_sort_order(a)

@@ -7,6 +7,7 @@
 
 import functools
 import logging
+from typing import Any
 
 import ida_funcs
 import idaapi
@@ -15,10 +16,12 @@ import idc
 import netnode
 import wasm
 import wasm.wasmtypes
+from wasm.types import Structure
 
 import idawasm.analysis.llvm
 import idawasm.common
 import idawasm.const
+from idawasm.types import Function
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +129,7 @@ class wasm_processor_t(idaapi.processor_t):
             idaapi.dt_qword: idaapi.OOFW_64,
         }[dt]
 
-    def _get_section(self, section_id):
+    def _get_section(self, section_id) -> Structure:
         """
         fetch the section with the given id.
 
@@ -191,7 +194,7 @@ class wasm_processor_t(idaapi.processor_t):
           code (bytes): raw bytecode.
 
         Returns:
-          Dict[int, Dict[int, int]]: map from instruction addresses to map from relative depth to branch target address.
+          dict[int, dict[int, int]]: map from instruction addresses to map from relative depth to branch target address.
         """
         # map from virtual address to map from relative depth to virtual address
         branch_targets = {}
@@ -284,7 +287,7 @@ class wasm_processor_t(idaapi.processor_t):
         parse the type entries.
 
         Returns:
-          List[Dict[str, Any]]: list if type descriptors, each which hash:
+          list[dict[str, Any]]: list if type descriptors, each which hash:
             - form
             - param_count
             - param_types
@@ -299,7 +302,7 @@ class wasm_processor_t(idaapi.processor_t):
         parse the global entries.
 
         Returns:
-          Dict[int, Dict[str, any]]: from global index to dict with keys `offset` and `type`.
+          dict[int, dict[str, any]]: from global index to dict with keys `offset` and `type`.
         """
         globals_ = {}
         global_section = self._get_section(wasm.wasmtypes.SEC_GLOBAL)
@@ -319,15 +322,15 @@ class wasm_processor_t(idaapi.processor_t):
             pcur += idawasm.common.size_of(body)
         return globals_
 
-    def _parse_imported_functions(self):
+    def _parse_imported_functions(self) -> dict[int, dict[str, Any]]:
         """
         parse the import entries for functions.
         useful for recovering function names.
 
         Returns:
-          Dict[int, Dict[str, any]]: from function index to dict with keys `index`, `module`, and `name`.
+          dict[int, dict[str, any]]: from function index to dict with keys `index`, `module`, and `name`.
         """
-        functions = {}
+        functions: dict[int, Function] = {}
         import_section = self._get_section(wasm.wasmtypes.SEC_IMPORT)
         type_section = self._get_section(wasm.wasmtypes.SEC_TYPE)
 
@@ -353,15 +356,15 @@ class wasm_processor_t(idaapi.processor_t):
 
         return functions
 
-    def _parse_exported_functions(self):
+    def _parse_exported_functions(self) -> dict[int, dict[str, Any]]:
         """
         parse the export entries for functions.
         useful for recovering function names.
 
         Returns:
-          Dict[int, Dict[str, any]]: from function index to dict with keys `index` and `name`.
+          dict[int, dict[str, any]]: from function index to dict with keys `index` and `name`.
         """
-        functions = {}
+        functions: dict[int, Function] = {}
         export_section = self._get_section(wasm.wasmtypes.SEC_EXPORT)
         for entry in export_section.data.payload.entries:
             if entry.kind != idawasm.const.WASM_EXTERNAL_KIND_FUNCTION:
@@ -377,11 +380,11 @@ class wasm_processor_t(idaapi.processor_t):
 
         return functions
 
-    def _parse_functions(self):
+    def _parse_functions(self) -> dict[int, Function]:
         imported_functions = self._parse_imported_functions()
         exported_functions = self._parse_exported_functions()
 
-        functions = dict(imported_functions)
+        functions: dict[int, Function] = dict(imported_functions)
 
         function_section = self._get_section(wasm.wasmtypes.SEC_FUNCTION)
         code_section = self._get_section(wasm.wasmtypes.SEC_CODE)
@@ -1347,7 +1350,7 @@ class wasm_processor_t(idaapi.processor_t):
         # ordered list of wasm section objects
         self.sections = []
         # map from function index to function object
-        self.functions = {}
+        self.functions: dict[int, Function] = {}
         # map from virtual address to function object
         self.function_offsets = {}
         # map from (va-start, va-end) to function object
