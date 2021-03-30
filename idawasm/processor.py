@@ -471,7 +471,7 @@ class wasm_processor_t(ida_idp.processor_t):
         """
         load the state of the processor and analysis from the segments.
 
-        the processor object may not be re-created, so we do our initializiation here.
+        the processor object may not be re-created, so we do our initialization here.
         initialize the following fields:
 
           - self.buf
