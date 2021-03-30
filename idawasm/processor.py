@@ -7,7 +7,7 @@
 
 import functools
 import logging
-from typing import Any
+from typing import Any, Optional
 
 import ida_bytes
 import ida_entry
@@ -137,7 +137,7 @@ class wasm_processor_t(ida_idp.processor_t):
             ida_ua.dt_double: ida_ua.OOFW_64,
         }[dt]
 
-    def _get_section(self, section_id) -> Structure:
+    def _get_section(self, section_id: int) -> Structure:
         """
         fetch the section with the given id.
 
@@ -161,7 +161,7 @@ class wasm_processor_t(ida_idp.processor_t):
 
         raise KeyError(section_id)
 
-    def _get_section_offset(self, section_id):
+    def _get_section_offset(self, section_id: int) -> int:
         """
         fetch the file offset of the given section.
 
@@ -188,7 +188,7 @@ class wasm_processor_t(ida_idp.processor_t):
 
         raise KeyError(section_id)
 
-    def _compute_function_branch_targets(self, offset, code):
+    def _compute_function_branch_targets(self, offset: int, code: bytes):
         """
         compute branch targets for the given code segment.
 
@@ -290,7 +290,7 @@ class wasm_processor_t(ida_idp.processor_t):
 
         return branch_targets
 
-    def _parse_types(self):
+    def _parse_types(self) -> list[dict[str, Any]]:
         """
         parse the type entries.
 
@@ -305,7 +305,7 @@ class wasm_processor_t(ida_idp.processor_t):
         type_section = self._get_section(wasm.wasmtypes.SEC_TYPE)
         return idawasm.common.struc_to_dict(type_section.data.payload.entries)
 
-    def _parse_globals(self):
+    def _parse_globals(self) -> dict[int, dict[str, Any]]:
         """
         parse the global entries.
 
@@ -563,14 +563,14 @@ class wasm_processor_t(ida_idp.processor_t):
         self.load()
 
     @ida_entry_point
-    def savebase(self):
+    def savebase(self) -> None:
         """
         the database is being saved.
         """
         logger.info('saving wasm processor state.')
 
     @ida_entry_point
-    def ev_endbinary(self, ok):
+    def ev_endbinary(self, ok: bool) -> None:
         """
          After loading a binary file
          args:
@@ -579,18 +579,18 @@ class wasm_processor_t(ida_idp.processor_t):
         logger.info('wasm module loaded.')
 
     @ida_entry_point
-    def ev_get_autocmt(self, insn):
+    def ev_get_autocmt(self, insn: ida_ua.insn_t) -> Optional[str]:
         """
         fetch instruction auto-comment.
 
         Returns:
-          Union[str, None]: the comment string, or None.
+          Optional[str]: the comment string, or None.
         """
         if 'cmt' in self.instruc[insn.itype]:
             return self.instruc[insn.itype]['cmt']
 
     @ida_entry_point
-    def ev_may_be_func(self, insn, state):
+    def ev_may_be_func(self, insn: ida_ua.insn_t, state) -> int:
         """
         can a function start at the given instruction?
 
@@ -602,7 +602,7 @@ class wasm_processor_t(ida_idp.processor_t):
         else:
             return 0
 
-    def notify_emu_BR_END(self, insn, next):
+    def notify_emu_BR_END(self, insn: ida_ua.insn_t, next: ida_ua.insn_t) -> int:
         # unconditional branch followed by END.
 
         # BR flows to the END
@@ -620,7 +620,7 @@ class wasm_processor_t(ida_idp.processor_t):
 
         return 1
 
-    def notify_emu_BR_IF_END(self, insn, next):
+    def notify_emu_BR_IF_END(self, insn: ida_ua.insn_t, next: ida_ua.insn_t) -> int:
         # BR_IF flows to the END
         ida_xref.add_cref(insn.ea, insn.ea + insn.size, ida_xref.fl_F)
 
@@ -637,7 +637,7 @@ class wasm_processor_t(ida_idp.processor_t):
 
         return 1
 
-    def notify_emu_RETURN_END(self, insn, next):
+    def notify_emu_RETURN_END(self, insn: ida_ua.insn_t, next: ida_ua.insn_t) -> int:
         # the RETURN will fallthrough to END,
         ida_xref.add_cref(insn.ea, insn.ea + insn.size, ida_xref.fl_F)
 
@@ -646,7 +646,7 @@ class wasm_processor_t(ida_idp.processor_t):
 
         return 1
 
-    def notify_emu_BR(self, insn):
+    def notify_emu_BR(self, insn: ida_ua.insn_t) -> int:
         # handle an unconditional branch not at the end of a black.
 
         # unconditional branch does not fallthrough flow.
@@ -661,7 +661,7 @@ class wasm_processor_t(ida_idp.processor_t):
 
         return 1
 
-    def notify_emu_BR_IF(self, insn):
+    def notify_emu_BR_IF(self, insn: ida_ua.insn_t) -> int:
         # handle a conditional branch not at the end of a block.
         # fallthrough flow
         ida_xref.add_cref(insn.ea, insn.ea + insn.size, ida_xref.fl_F)
@@ -675,7 +675,7 @@ class wasm_processor_t(ida_idp.processor_t):
 
         return 1
 
-    def notify_emu_END(self, insn):
+    def notify_emu_END(self, insn: ida_ua.insn_t) -> int:
         for flow in self.deferred_flows.get(insn.ea, []):
             ida_xref.add_cref(*flow)
 
@@ -717,7 +717,7 @@ class wasm_processor_t(ida_idp.processor_t):
         return 1
 
     @ida_entry_point
-    def ev_emu_insn(self, insn):
+    def ev_emu_insn(self, insn: ida_ua.insn_t) -> int:
         """
         Emulate instruction, create cross-references, plan to analyze
         subsequent instructions, modify flags etc. Upon entrance to this function
@@ -854,7 +854,7 @@ class wasm_processor_t(ida_idp.processor_t):
             ida_xref.add_cref(insn.ea, insn.ea + insn.size, ida_xref.fl_F)
 
     @ida_entry_point
-    def out_mnem(self, ctx):
+    def out_mnem(self, ctx) -> None:
         postfix = ''
         ctx.out_mnem(20, postfix)
 
@@ -1088,7 +1088,7 @@ class wasm_processor_t(ida_idp.processor_t):
         ctx.flush_outbuf()
 
     @ida_entry_point
-    def ev_ana_insn(self, insn):
+    def ev_ana_insn(self, insn: ida_ua.insn_t) -> int:
         """
         decodes an instruction and place it into the given insn.
 
