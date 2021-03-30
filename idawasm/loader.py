@@ -276,9 +276,11 @@ def load_file(f: ida_idaapi.loader_input_t, neflags: Any, format: Any) -> int:
         if i == 0:
             sname = 'header'
         else:
-            if section.data.id == 0:
-                # fetch custom name
-                sname = ''
+            if section.data.id == wasm.wasmtypes.SEC_UNK:
+                if section.data.name:
+                    sname = section.data.name.tobytes().decode('utf-8')
+                else:
+                    sname = ''
             else:
                 sname = idawasm.const.WASM_SECTION_NAMES.get(section.data.id, 'unknown')
 
