@@ -73,6 +73,11 @@ def no_exceptions(f):
 ida_entry_point = no_exceptions
 
 
+class SectionNotFoundError(Exception):
+    def __init__(self, section_id):
+        Exception.__init__(self, f'section not found: {section_id}')
+
+
 class wasm_processor_t(ida_idp.processor_t):
     # processor ID for the wasm disassembler.
     # I made this number up.
@@ -148,7 +153,7 @@ class wasm_processor_t(ida_idp.processor_t):
           wasm.Structure: the section.
 
         Raises:
-          KeyError: if the section is not found.
+          SectionNotFoundError: if the section is not found.
         """
         for i, section in enumerate(self.sections):
             if i == 0:
@@ -159,7 +164,7 @@ class wasm_processor_t(ida_idp.processor_t):
 
             return section
 
-        raise KeyError(section_id)
+        raise SectionNotFoundError(section_id)
 
     def _get_section_offset(self, section_id: int) -> int:
         """
@@ -172,7 +177,7 @@ class wasm_processor_t(ida_idp.processor_t):
           int: the offset of the section.
 
         Raises:
-          KeyError: if the section is not found.
+          SectionNotFoundError: if the section is not found.
         """
         p = 0
         for i, section in enumerate(self.sections):
@@ -186,7 +191,7 @@ class wasm_processor_t(ida_idp.processor_t):
 
             return p
 
-        raise KeyError(section_id)
+        raise SectionNotFoundError(section_id)
 
     def _compute_function_branch_targets(self, offset: int, code: bytes):
         """
@@ -389,8 +394,14 @@ class wasm_processor_t(ida_idp.processor_t):
         return functions
 
     def _parse_functions(self) -> dict[int, Function]:
-        imported_functions = self._parse_imported_functions()
-        exported_functions = self._parse_exported_functions()
+        try:
+            imported_functions = self._parse_imported_functions()
+        except SectionNotFoundError:
+            imported_functions = {}
+        try:
+            exported_functions = self._parse_exported_functions()
+        except SectionNotFoundError:
+            exported_functions = []
 
         functions: dict[int, Function] = dict(imported_functions)
 
@@ -494,13 +505,22 @@ class wasm_processor_t(ida_idp.processor_t):
         self.sections = list(wasm.decode_module(self.buf))
 
         logger.info('parsing types')
-        self.types = self._parse_types()
+        try:
+            self.types = self._parse_types()
+        except SectionNotFoundError as e:
+            logger.info(f'failed to parse types: {e}')
 
         logger.info('parsing globals')
-        self.globals = self._parse_globals()
+        try:
+            self.globals = self._parse_globals()
+        except SectionNotFoundError as e:
+            logger.info(f'failed to parse globals: {e}')
 
         logger.info('parsing functions')
-        self.functions = self._parse_functions()
+        try:
+            self.functions = self._parse_functions()
+        except SectionNotFoundError as e:
+            logger.info(f'failed to parse functions: {e}')
 
         # map from function offset to function object
         self.function_offsets = {f['offset']: f for f in self.functions.values() if 'offset' in f}
