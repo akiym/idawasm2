@@ -224,6 +224,8 @@ class wasm_processor_t(ida_idp.processor_t):
                 block = {
                     'index': block_index,
                     'offset': p,
+                    'end_offset': None,
+                    'else_offset': None,
                     'depth': len(block_stack),
                     'type': {
                         wasm.OP_BLOCK: 'block',
@@ -268,8 +270,15 @@ class wasm_processor_t(ida_idp.processor_t):
                 }
 
             elif bc.op.id in {wasm.OP_ELSE}:
-                # TODO: not exactly sure of the semantics here
-                raise NotImplementedError('else')
+                for block_index in block_stack:
+                    block = blocks[block_index]
+                    if block['type'] == 'if':
+                        block['else_offset'] = p + bc.len
+                        branch_targets[p] = {
+                            # reference to block that is ending
+                            'block': block,
+                        }
+                        break
 
             elif bc.op.id in {wasm.OP_BR_TABLE}:
                 # TODO: not exactly sure what one of these looks like yet.
@@ -705,6 +714,19 @@ class wasm_processor_t(ida_idp.processor_t):
         if insn.ea in self.branch_targets:
             targets = self.branch_targets[insn.ea]
             for target_block in targets.values():
+                else_va = target_block['else_offset']
+                if else_va:
+                    ida_xref.add_cref(insn.ea, else_va, ida_xref.fl_JF)
+                else:
+                    end_va = target_block['end_offset']
+                    ida_xref.add_cref(insn.ea, end_va, ida_xref.fl_JF)
+
+        return 1
+
+    def notify_emu_ELSE(self, insn: ida_ua.insn_t) -> int:
+        if insn.ea in self.branch_targets:
+            targets = self.branch_targets[insn.ea]
+            for target_block in targets.values():
                 target_va = target_block['end_offset']
                 ida_xref.add_cref(insn.ea, target_va, ida_xref.fl_JF)
 
@@ -879,6 +901,9 @@ class wasm_processor_t(ida_idp.processor_t):
 
         elif insn.itype == self.itype_IF:
             return self.notify_emu_IF(insn)
+
+        elif insn.itype == self.itype_ELSE:
+            return self.notify_emu_ELSE(insn)
 
         # add flows deferred from a prior branch, eg.
         #
