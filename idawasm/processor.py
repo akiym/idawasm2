@@ -699,6 +699,17 @@ class wasm_processor_t(ida_idp.processor_t):
 
         return 1
 
+    def notify_emu_IF(self, insn: ida_ua.insn_t) -> int:
+        ida_xref.add_cref(insn.ea, insn.ea + insn.size, ida_xref.fl_F)
+
+        if insn.ea in self.branch_targets:
+            targets = self.branch_targets[insn.ea]
+            for target_block in targets.values():
+                target_va = target_block['end_offset']
+                ida_xref.add_cref(insn.ea, target_va, ida_xref.fl_JF)
+
+        return 1
+
     def notify_emu_END(self, insn: ida_ua.insn_t) -> int:
         for flow in self.deferred_flows.get(insn.ea, []):
             ida_xref.add_cref(*flow)
@@ -717,7 +728,8 @@ class wasm_processor_t(ida_idp.processor_t):
 
             elif block['type'] == 'if':
                 # end of if
-                raise NotImplementedError('if')
+                if insn.ea not in self.deferred_noflows:
+                    ida_xref.add_cref(insn.ea, insn.ea + insn.size, ida_xref.fl_F)
 
             elif block['type'] == 'block':
                 # end of block
@@ -864,6 +876,9 @@ class wasm_processor_t(ida_idp.processor_t):
         # handle a conditional branch not at the end of a block.
         elif insn.itype == self.itype_BR_IF:
             return self.notify_emu_BR_IF(insn)
+
+        elif insn.itype == self.itype_IF:
+            return self.notify_emu_IF(insn)
 
         # add flows deferred from a prior branch, eg.
         #
@@ -1098,12 +1113,12 @@ class wasm_processor_t(ida_idp.processor_t):
         #
         #     code:0E77     br_if        loc_error
 
-        if insn.itype in (self.itype_BLOCK, self.itype_LOOP, self.itype_END) \
+        if insn.itype in (self.itype_BLOCK, self.itype_LOOP, self.itype_IF, self.itype_END) \
                 and ea in self.branch_targets:
 
             targets = self.branch_targets[ea]
             block = targets['block']
-            if block['type'] in ('block', 'loop'):
+            if block['type'] in ('block', 'loop', 'if'):
                 ctx.out_tagon(ida_lines.COLOR_UNAME)
                 for c in ("$" + block['type'] + str(block['index'])):
                     ctx.out_char(c)
