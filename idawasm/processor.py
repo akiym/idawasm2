@@ -1181,6 +1181,7 @@ class wasm_processor_t(ida_idp.processor_t):
             # by default, display the operand, unless overridden below.
             insn.Op1.flags = SHOW_FLAGS
 
+            # block, loop, if
             if immtype == wasm.immtypes.BlockImm:
                 # sig = BlockTypeField()
                 insn.Op1.type = WASM_BLOCK
@@ -1188,12 +1189,14 @@ class wasm_processor_t(ida_idp.processor_t):
                 insn.Op1.value = bc.imm.sig
                 insn.Op1.specval = WASM_BLOCK
 
+            # br, br_if
             elif immtype == wasm.immtypes.BranchImm:
                 # relative_depth = VarUInt32Field()
                 insn.Op1.type = ida_ua.o_imm
                 insn.Op1.dtype = ida_ua.dt_dword
                 insn.Op1.value = bc.imm.relative_depth
 
+            # br_table
             elif immtype == wasm.immtypes.BranchTableImm:
                 # target_count = VarUInt32Field()
                 # target_table = RepeatField(VarUInt32Field(), lambda x: x.target_count)
@@ -1216,6 +1219,7 @@ class wasm_processor_t(ida_idp.processor_t):
                 insn.Op3.dtype = ida_ua.dt_dword
                 insn.Op3.value = bc.imm.default_target
 
+            # call
             elif immtype == wasm.immtypes.CallImm:
                 # function_index = VarUInt32Field()
                 insn.Op1.type = ida_ua.o_imm
@@ -1223,6 +1227,7 @@ class wasm_processor_t(ida_idp.processor_t):
                 insn.Op1.value = bc.imm.function_index
                 insn.Op1.specval = WASM_FUNC_INDEX
 
+            # call_indirect
             elif immtype == wasm.immtypes.CallIndirectImm:
                 # type_index = VarUInt32Field()
                 # reserved = VarUInt1Field()
@@ -1238,12 +1243,14 @@ class wasm_processor_t(ida_idp.processor_t):
                 insn.Op2.dtype = ida_ua.dt_dword
                 insn.Op2.value = bc.imm.reserved
 
+            # get_local, set_local, tee_local
             elif immtype == wasm.immtypes.LocalVarXsImm:
                 # local_index = VarUInt32Field()
                 insn.Op1.type = ida_ua.o_reg
                 insn.Op1.reg = bc.imm.local_index
                 insn.Op1.specval = WASM_LOCAL
 
+            # get_global, set_global
             elif immtype == wasm.immtypes.GlobalVarXsImm:
                 # global_index = VarUInt32Field()
                 insn.Op1.type = ida_ua.o_imm
@@ -1251,6 +1258,7 @@ class wasm_processor_t(ida_idp.processor_t):
                 insn.Op1.value = bc.imm.global_index
                 insn.Op1.specval = WASM_GLOBAL
 
+            # *.load*, *.store*
             elif immtype == wasm.immtypes.MemoryImm:
                 # flags = VarUInt32Field()
                 # offset = VarUInt32Field()
@@ -1266,30 +1274,35 @@ class wasm_processor_t(ida_idp.processor_t):
                 insn.Op2.value = bc.imm.flags
                 insn.Op2.specval = WASM_ALIGN
 
+            # current_memory, grow_memory
             elif immtype == wasm.immtypes.CurGrowMemImm:
                 # reserved = VarUInt1Field()
                 insn.Op1.type = ida_ua.o_imm
                 insn.Op1.dtype = ida_ua.dt_dword
                 insn.Op1.value = bc.imm.reserved
 
+            # i32.const
             elif immtype == wasm.immtypes.I32ConstImm:
                 # value = VarInt32Field()
                 insn.Op1.type = ida_ua.o_imm
                 insn.Op1.dtype = ida_ua.dt_dword
                 insn.Op1.value = bc.imm.value
 
+            # i64.const
             elif immtype == wasm.immtypes.I64ConstImm:
                 # value = VarInt64Field()
                 insn.Op1.type = ida_ua.o_imm
                 insn.Op1.dtype = ida_ua.dt_qword
                 insn.Op1.value = bc.imm.value
 
+            # f32.const
             elif immtype == wasm.immtypes.F32ConstImm:
                 # value = UInt32Field()
                 insn.Op1.type = ida_ua.o_imm
                 insn.Op1.dtype = ida_ua.dt_float
                 insn.Op1.value = bc.imm.value
 
+            # f64.const
             elif immtype == wasm.immtypes.F64ConstImm:
                 # value = UInt64Field()
                 insn.Op1.type = ida_ua.o_imm
