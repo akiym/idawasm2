@@ -14,8 +14,8 @@ import wasm.wasmtypes
 from wasm.decode import ModuleFragment
 from wasm.types import StructureData
 
-import idawasm.common
 import idawasm.const
+from idawasm.common import get_fields, is_struc, offset_of, size_of
 
 
 def accept_file(f: ida_idaapi.loader_input_t, n: Any) -> Union[str, int]:
@@ -127,18 +127,18 @@ def load_struc(struc: StructureData, p: int, path: str) -> int:
     Returns:
       int: the next offset following the loaded structure.
     """
-    for field in idawasm.common.get_fields(struc):
+    for field in get_fields(struc):
         # build names like: `sections:2:payload:entries:0:module_str`
         name = path + ':' + field.name
 
         # recurse into nested structures
-        if idawasm.common.is_struc(field.value):
+        if is_struc(field.value):
             p = load_struc(cast(StructureData, field.value), p, name)
 
         # recurse into lists of structures
         elif (isinstance(field.value, list)
               and len(field.value) > 0
-              and idawasm.common.is_struc(field.value[0])):
+              and is_struc(field.value[0])):
 
             for i, v in enumerate(field.value):
                 p = load_struc(v, p, name + ':' + str(i))
@@ -191,8 +191,8 @@ def load_globals_section(section: ModuleFragment, p: int) -> None:
     """
     Specialized handler for the GLOBALS section to mark the initializer as code.
     """
-    ppayload = p + idawasm.common.offset_of(section.data, 'payload')
-    pglobals = ppayload + idawasm.common.offset_of(section.data.payload, 'globals')
+    ppayload = p + offset_of(section.data, 'payload')
+    pglobals = ppayload + offset_of(section.data.payload, 'globals')
     pcur = pglobals
     for i, body in enumerate(section.data.payload.globals):
         gname = 'global_%X' % i
@@ -204,36 +204,36 @@ def load_globals_section(section: ModuleFragment, p: int) -> None:
         #     global_0_init:  <---- fake label line
         #        i32.const    <---- init expression insns
         #        ret
-        pinit = pcur + idawasm.common.offset_of(body, 'init')
+        pinit = pcur + offset_of(body, 'init')
         ida_name.set_name(pinit, gname, ida_name.SN_CHECK)
         ida_lines.update_extra_cmt(pinit, ida_lines.E_PREV + 0, gname + '_init:')
         ida_ua.create_insn(pinit)
 
-        pcur += idawasm.common.size_of(body)
+        pcur += size_of(body)
 
 
 def load_elements_section(section: ModuleFragment, p: int) -> None:
     """
     Specialized handler for the ELEMENTS section to mark the offset initializer as code.
     """
-    ppayload = p + idawasm.common.offset_of(section.data, 'payload')
-    pentries = ppayload + idawasm.common.offset_of(section.data.payload, 'entries')
+    ppayload = p + offset_of(section.data, 'payload')
+    pentries = ppayload + offset_of(section.data.payload, 'entries')
     pcur = pentries
     for i, body in enumerate(section.data.payload.entries):
-        ida_ua.create_insn(pcur + idawasm.common.offset_of(body, 'offset'))
-        pcur += idawasm.common.size_of(body)
+        ida_ua.create_insn(pcur + offset_of(body, 'offset'))
+        pcur += size_of(body)
 
 
 def load_data_section(section: ModuleFragment, p: int) -> None:
     """
     specialized handler for the DATA section to mark the offset initializer as code.
     """
-    ppayload = p + idawasm.common.offset_of(section.data, 'payload')
-    pentries = ppayload + idawasm.common.offset_of(section.data.payload, 'entries')
+    ppayload = p + offset_of(section.data, 'payload')
+    pentries = ppayload + offset_of(section.data.payload, 'entries')
     pcur = pentries
     for i, body in enumerate(section.data.payload.entries):
-        ida_ua.create_insn(pcur + idawasm.common.offset_of(body, 'offset'))
-        pcur += idawasm.common.size_of(body)
+        ida_ua.create_insn(pcur + offset_of(body, 'offset'))
+        pcur += size_of(body)
 
 
 SECTION_LOADERS = {

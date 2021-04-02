@@ -24,8 +24,8 @@ import wasm.wasmtypes
 from wasm.decode import ModuleFragment
 
 import idawasm.analysis.llvm
-import idawasm.common
 import idawasm.const
+from idawasm.common import offset_of, size_of, struc_to_dict
 from idawasm.types import Function
 
 logger = logging.getLogger(__name__)
@@ -181,11 +181,11 @@ class wasm_processor_t(ida_idp.processor_t):
         p = 0
         for i, section in enumerate(self.sections):
             if i == 0:
-                p += idawasm.common.size_of(section.data)
+                p += size_of(section.data)
                 continue
 
             if section.data.id != section_id:
-                p += idawasm.common.size_of(section.data)
+                p += size_of(section.data)
                 continue
 
             return p
@@ -285,12 +285,12 @@ class wasm_processor_t(ida_idp.processor_t):
         code_section = self._get_section(wasm.wasmtypes.SEC_CODE)
         pcode_section = self._get_section_offset(wasm.wasmtypes.SEC_CODE)
 
-        ppayload = pcode_section + idawasm.common.offset_of(code_section.data, 'payload')
-        pbody = ppayload + idawasm.common.offset_of(code_section.data.payload, 'bodies')
+        ppayload = pcode_section + offset_of(code_section.data, 'payload')
+        pbody = ppayload + offset_of(code_section.data.payload, 'bodies')
         for body in code_section.data.payload.bodies:
-            pcode = pbody + idawasm.common.offset_of(body, 'code')
+            pcode = pbody + offset_of(body, 'code')
             branch_targets.update(self._compute_function_branch_targets(pcode, body.code))
-            pbody += idawasm.common.size_of(body)
+            pbody += size_of(body)
 
         return branch_targets
 
@@ -307,7 +307,7 @@ class wasm_processor_t(ida_idp.processor_t):
             - return_type
         """
         type_section = self._get_section(wasm.wasmtypes.SEC_TYPE)
-        return idawasm.common.struc_to_dict(type_section.data.payload.entries)
+        return struc_to_dict(type_section.data.payload.entries)
 
     def _parse_globals(self) -> dict[int, dict[str, Any]]:
         """
@@ -320,18 +320,18 @@ class wasm_processor_t(ida_idp.processor_t):
         global_section = self._get_section(wasm.wasmtypes.SEC_GLOBAL)
         pglobal_section = self._get_section_offset(wasm.wasmtypes.SEC_GLOBAL)
 
-        ppayload = pglobal_section + idawasm.common.offset_of(global_section.data, 'payload')
-        pglobals = ppayload + idawasm.common.offset_of(global_section.data.payload, 'globals')
+        ppayload = pglobal_section + offset_of(global_section.data, 'payload')
+        pglobals = ppayload + offset_of(global_section.data.payload, 'globals')
         pcur = pglobals
         for i, body in enumerate(global_section.data.payload.globals):
-            pinit = pcur + idawasm.common.offset_of(body, 'init')
+            pinit = pcur + offset_of(body, 'init')
             ctype = idawasm.const.WASM_TYPE_NAMES[body.type.content_type]
             globals_[i] = {
                 'index': i,
                 'offset': pinit,
                 'type': ctype,
             }
-            pcur += idawasm.common.size_of(body)
+            pcur += size_of(body)
         return globals_
 
     def _parse_imported_functions(self) -> dict[int, dict[str, Any]]:
@@ -358,7 +358,7 @@ class wasm_processor_t(ida_idp.processor_t):
                 'index': function_index,
                 'module': entry.module_str.tobytes().decode('utf-8'),
                 'name': entry.field_str.tobytes().decode('utf-8'),
-                'type': idawasm.common.struc_to_dict(ftype),
+                'type': struc_to_dict(ftype),
                 'imported': True,
                 # TODO: not sure if an import can be exported.
                 'exported': False,
@@ -410,8 +410,8 @@ class wasm_processor_t(ida_idp.processor_t):
         type_section = self._get_section(wasm.wasmtypes.SEC_TYPE)
 
         payload = code_section.data.payload
-        ppayload = pcode_section + idawasm.common.offset_of(code_section.data, 'payload')
-        pbody = ppayload + idawasm.common.offset_of(payload, 'bodies')
+        ppayload = pcode_section + offset_of(code_section.data, 'payload')
+        pbody = ppayload + offset_of(payload, 'bodies')
         for i in range(code_section.data.payload.count):
             function_index = len(imported_functions) + i
             body = code_section.data.payload.bodies[i]
@@ -434,15 +434,15 @@ class wasm_processor_t(ida_idp.processor_t):
             functions[function_index] = {
                 'index': function_index,
                 'name': name,
-                'offset': pbody + idawasm.common.offset_of(body, 'code'),
-                'type': idawasm.common.struc_to_dict(ftype),
+                'offset': pbody + offset_of(body, 'code'),
+                'type': struc_to_dict(ftype),
                 'exported': is_exported,
                 'imported': False,
                 'local_types': local_types,
-                'size': idawasm.common.size_of(body, 'code'),
+                'size': size_of(body, 'code'),
             }
 
-            pbody += idawasm.common.size_of(body)
+            pbody += size_of(body)
 
         return functions
 
