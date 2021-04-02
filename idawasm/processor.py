@@ -7,6 +7,7 @@
 
 import functools
 import logging
+from collections import deque
 from typing import Any, Optional
 
 import ida_bytes
@@ -213,7 +214,7 @@ class wasm_processor_t(ida_idp.processor_t):
         # map from block index to block instance, with fields including `offset` and `depth`
         blocks = {}
         # stack of block indexes
-        block_stack = []
+        block_stack: deque[int] = deque()
         p = offset
 
         for bc in wasm.decode_bytecode(code):
@@ -231,7 +232,7 @@ class wasm_processor_t(ida_idp.processor_t):
                     }[bc.op.id],
                 }
                 blocks[block_index] = block
-                block_stack.insert(0, block_index)
+                block_stack.appendleft(block_index)
                 branch_targets[p] = {
                     # reference to block that is starting
                     'block': block
@@ -251,7 +252,7 @@ class wasm_processor_t(ida_idp.processor_t):
                     break
 
                 # leaving a block, so pop from the depth stack
-                block_index = block_stack.pop(0)
+                block_index = block_stack.popleft()
                 block = blocks[block_index]
                 block['end_offset'] = p + bc.len
                 branch_targets[p] = {
