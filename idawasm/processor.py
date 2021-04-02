@@ -18,7 +18,6 @@ import ida_name
 import ida_segment
 import ida_ua
 import ida_xref
-import idautils
 import netnode
 import wasm
 import wasm.wasmtypes
@@ -495,9 +494,9 @@ class wasm_processor_t(ida_idp.processor_t):
         """
         logger.info('parsing sections')
         buf = []
-        for ea in idautils.Segments():
+        for n in range(ida_segment.get_segm_qty()):
             # assume all the segments are contiguous, which is what our loader does
-            seg = ida_segment.getseg(ea)
+            seg = ida_segment.getnseg(n)
             if seg:
                 buf.append(ida_bytes.get_bytes(seg.start_ea, seg.end_ea - seg.start_ea))
 
@@ -790,8 +789,9 @@ class wasm_processor_t(ida_idp.processor_t):
         so, we have to used this "deferred" approach.
         """
 
-        # note: `next` may be None if invalid.
-        next = idautils.DecodeInstruction(insn.ea + insn.size)
+        next = ida_ua.insn_t()
+        if not ida_ua.decode_insn(next, insn.ea + insn.size):
+            next = None
 
         # add drefs to globals
         for op in insn.ops:
