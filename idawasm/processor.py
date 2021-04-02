@@ -22,7 +22,7 @@ import idautils
 import netnode
 import wasm
 import wasm.wasmtypes
-from wasm.types import Structure
+from wasm.decode import ModuleFragment
 
 import idawasm.analysis.llvm
 import idawasm.common
@@ -142,7 +142,7 @@ class wasm_processor_t(ida_idp.processor_t):
             ida_ua.dt_double: ida_ua.OOFW_64,
         }[dt]
 
-    def _get_section(self, section_id: int) -> Structure:
+    def _get_section(self, section_id: int) -> ModuleFragment:
         """
         fetch the section with the given id.
 
@@ -1378,7 +1378,7 @@ class wasm_processor_t(ida_idp.processor_t):
         # these will be populated by `notify_newfile`
         self.buf = b''
         # ordered list of wasm section objects
-        self.sections = []
+        self.sections: list[ModuleFragment] = []
         # map from function index to function object
         self.functions: dict[int, Function] = {}
         # map from virtual address to function object
