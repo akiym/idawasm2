@@ -554,7 +554,7 @@ class wasm_processor_t(ida_idp.processor_t):
             # TODO: ida_entry.add_entry for the start routine. need an example of this.
 
     @ida_entry_point
-    def ev_newfile(self, filename):
+    def ev_newfile(self, filename: str) -> int:
         """
         handle file being analyzed for the first time.
         """
@@ -574,13 +574,17 @@ class wasm_processor_t(ida_idp.processor_t):
             else:
                 logger.debug('%s declined analysis', Analyzer.__name__)
 
+        return 0
+
     @ida_entry_point
-    def ev_oldfile(self, filename):
+    def ev_oldfile(self, filename: str) -> int:
         """
         handle file loaded from existing .idb database.
         """
         logger.info('existing database: %s', filename)
         self.load()
+
+        return 0
 
     @ida_entry_point
     def savebase(self) -> None:
