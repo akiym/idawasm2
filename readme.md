@@ -59,6 +59,13 @@ Whenever you update this project, you'll need to update the python module, but s
 
 This plugin was developed against IDA 7.1, but probably works with IDA 7.0+.
 
+## todo
+
+- [ ] name locations
+- [ ] mark data xref to memory load/store
+- [ ] mark xref to imports
+- [ ] compute stack deltas
+- [ ] add entry point for start function (need to see an example)
 
 ## acknowledgements
 

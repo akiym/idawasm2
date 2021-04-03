@@ -1,10 +1,3 @@
-# TODO:
-#  - name locations
-#  - mark data xref to memory load/store
-#  - mark xref to imports
-#  - compute stack deltas
-#  - add entry point for start function (need to see an example)
-
 import functools
 import logging
 from collections import deque
