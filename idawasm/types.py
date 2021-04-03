@@ -23,3 +23,14 @@ class FrameReference(TypedDict, total=False):
     offset: int
     # the parameter index being loaded.
     parameter: Optional[int]
+
+
+class Block(TypedDict):
+    index: int
+    offset: int
+    end_offset: Optional[int]
+    else_offset: Optional[int]
+    br_table_target: Optional[int]
+    depth: int
+    # "block", "loop", "if", "function"
+    type: str

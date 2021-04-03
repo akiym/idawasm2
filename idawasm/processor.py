@@ -27,7 +27,7 @@ from wasm.decode import Instruction, ModuleFragment
 import idawasm.analysis.llvm
 import idawasm.const
 from idawasm.common import offset_of, size_of, struc_to_dict
-from idawasm.types import Function
+from idawasm.types import Block, Function
 
 logger = logging.getLogger(__name__)
 
@@ -195,7 +195,7 @@ class wasm_processor_t(ida_idp.processor_t):
 
         raise SectionNotFoundError(section_id)
 
-    def _compute_function_branch_targets(self, offset: int, code: bytes):
+    def _compute_function_branch_targets(self, offset: int, code: bytes) -> dict[int, dict[str, Block]]:
         """
         compute branch targets for the given code segment.
 
@@ -209,12 +209,12 @@ class wasm_processor_t(ida_idp.processor_t):
           code (bytes): raw bytecode.
 
         Returns:
-          dict[int, dict[int, int]]: map from instruction addresses to map from relative depth to branch target address.
+          dict[int, dict[str, Block]]: map from instruction addresses to map from relative depth to branch target address.
         """
         # map from virtual address to map from relative depth to virtual address
-        branch_targets = {}
+        branch_targets: dict[int, dict[str, Block]] = {}
         # map from block index to block instance, with fields including `offset` and `depth`
-        blocks = {}
+        blocks: dict[int, Block] = {}
         # stack of block indexes
         block_stack: deque[int] = deque()
         p = offset
@@ -223,7 +223,7 @@ class wasm_processor_t(ida_idp.processor_t):
             if bc.op.id in {wasm.OP_BLOCK, wasm.OP_LOOP, wasm.OP_IF}:
                 # enter a new block, so capture info, and push it onto the current depth stack
                 block_index = len(blocks)
-                block = {
+                block: Block = {
                     'index': block_index,
                     'offset': p,
                     'end_offset': None,
@@ -299,8 +299,8 @@ class wasm_processor_t(ida_idp.processor_t):
 
         return branch_targets
 
-    def _compute_branch_targets(self):
-        branch_targets = {}
+    def _compute_branch_targets(self) -> dict[int, dict[str, Block]]:
+        branch_targets: dict[int, dict[str, Block]] = {}
 
         code_section = self._get_section(wasm.wasmtypes.SEC_CODE)
         pcode_section = self._get_section_offset(wasm.wasmtypes.SEC_CODE)
@@ -487,7 +487,7 @@ class wasm_processor_t(ida_idp.processor_t):
 
         return '(func%s%s%s)' % (name, sparam, sresult)
 
-    def _render_function_prototype(self, function):
+    def _render_function_prototype(self, function) -> str:
         if function.get('imported'):
             name = '$import%d' % (function['index'])
             signature = self._render_type(function['type'], name=name)
@@ -1518,7 +1518,7 @@ class wasm_processor_t(ida_idp.processor_t):
         # map from global index to global object
         self.globals = {}
         # map from va to map from relative depth to va
-        self.branch_targets = {}
+        self.branch_targets: dict[int, dict[str, Block]] = {}
         # list of type descriptors
         self.types = []
 
