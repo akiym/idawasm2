@@ -1179,15 +1179,23 @@ class wasm_processor_t(ida_idp.processor_t):
         if wasm.opcodes.OPCODE_MAP.get(opb).imm_struct:
             # opcode has operands that we must decode
 
-            # can't usually just cast the bytearray to a string without explicit decode.
-            # assumption: instruction will be less than 0x10 bytes.
-            buf = ida_bytes.get_bytes(insn.ea, 0x10)
+            bc = None
+            for i in range(1, 5):
+                try:
+                    buf = ida_bytes.get_bytes(insn.ea, 0x10 ** i)
+                    bc = next(wasm.decode_bytecode(buf))
+                    break
+                except:  # NOQA: E722 do not use bare 'except'
+                    pass
+
+            if bc is None:
+                raise RuntimeError('could not decode bytecode')
         else:
             # single byte instruction
 
             buf = bytes([opb])
+            bc = next(wasm.decode_bytecode(buf))
 
-        bc = next(wasm.decode_bytecode(buf))
         for _ in range(1, bc.len):
             # consume any additional bytes.
             # this is how IDA knows the size of the insn.
