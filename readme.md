@@ -1,6 +1,12 @@
-# idawasm
+# idawasm2
 
 These IDA Pro plugins add support for loading and disassembling WebAssembly modules.
+
+This version has been forked from [fireeye/idawasm](https://github.com/fireeye/idawasm) to enhance some features.
+
+- IDA 7.6 support
+- add Python 3 type annotations (partially for now)
+- support `if`, `else`, `br_table` operations
 
 
 Features:
@@ -8,7 +14,7 @@ Features:
   - control flow reconstruction and graph mode
   - code and data cross references
   - globals, function parameters, local variables, etc. can be renamed
-  - auto-comment hint suport
+  - auto-comment hint support
   
   
 #### recognizes WebAssembly modules
@@ -30,7 +36,7 @@ Features:
 
 #### detect function frame layout (for LLVM-compiled binaries)
 
-![drefs](img/frame.png)
+![frame](img/frame.png)
 
   
 ## installation
@@ -57,7 +63,9 @@ There are three steps to install this loader and processor:
 
 Whenever you update this project, you'll need to update the python module, but shouldn't have to touch the loader and processor files.
 
-This plugin was developed against IDA 7.1, but probably works with IDA 7.0+.
+## supported IDA version
+
+IDA 7.6 and Python 3.9 or later
 
 ## todo
 
@@ -69,4 +77,11 @@ This plugin was developed against IDA 7.1, but probably works with IDA 7.0+.
 
 ## acknowledgements
 
+[fireeye/idawasm](https://github.com/fireeye/idawasm) - Original version of this repository.
+
 This project relies on the [athre0z/wasm](https://github.com/athre0z/wasm) WebAssembly decoder and disassembler library for Python.
+
+## copyright
+
+- Willi Ballenthin (original author of idawasm)
+- Takumi Akiyama
