@@ -22,7 +22,7 @@ import ida_xref
 import netnode
 import wasm
 import wasm.wasmtypes
-from wasm.decode import ModuleFragment
+from wasm.decode import Instruction, ModuleFragment
 
 import idawasm.analysis.llvm
 import idawasm.const
@@ -38,6 +38,8 @@ WASM_FUNC_INDEX = ida_ua.o_idpspec2
 WASM_TYPE_INDEX = ida_ua.o_idpspec3
 WASM_BLOCK = ida_ua.o_idpspec4
 WASM_ALIGN = ida_ua.o_idpspec5
+WASM_BRANCH_TABLE = ida_ua.o_idpspec5+1
+WASM_BRANCH_TABLE_DEFAULT = ida_ua.o_idpspec5+2
 
 
 def no_exceptions(f):
@@ -226,6 +228,7 @@ class wasm_processor_t(ida_idp.processor_t):
                     'offset': p,
                     'end_offset': None,
                     'else_offset': None,
+                    'br_table_target': None,
                     'depth': len(block_stack),
                     'type': {
                         wasm.OP_BLOCK: 'block',
@@ -262,6 +265,10 @@ class wasm_processor_t(ida_idp.processor_t):
                     'block': block
                 }
 
+                br_table_target = block['br_table_target']
+                if br_table_target is not None:
+                    ida_bytes.set_cmt(block['end_offset'], 'table %d' % br_table_target, 0)
+
             elif bc.op.id in {wasm.OP_BR, wasm.OP_BR_IF}:
                 block_index = block_stack[bc.imm.relative_depth]
                 block = blocks[block_index]
@@ -281,9 +288,12 @@ class wasm_processor_t(ida_idp.processor_t):
                         break
 
             elif bc.op.id in {wasm.OP_BR_TABLE}:
-                # TODO: not exactly sure what one of these looks like yet.
-                raise NotImplementedError('br table')
-                # probably will populate `branch_targets` with multiple entries
+                branch_targets[p] = {}
+                for relative_depth in *bc.imm.target_table, bc.imm.default_target:
+                    block_index = block_stack[relative_depth]
+                    block = blocks[block_index]
+                    block['br_table_target'] = relative_depth
+                    branch_targets[p][relative_depth] = block
 
             p += bc.len
 
@@ -487,6 +497,10 @@ class wasm_processor_t(ida_idp.processor_t):
         else:
             return self._render_type(function['type'], name=function['name'])
 
+    def _render_branch_table(self, addr) -> str:
+        bc = self._decode_bytecode_at(addr)
+        return '[%s]' % ','.join(map(str, bc.imm.target_table))
+
     def load(self):
         """
         load the state of the processor and analysis from the segments.
@@ -670,6 +684,15 @@ class wasm_processor_t(ida_idp.processor_t):
 
         return 1
 
+    def notify_emu_BR_TABLE_END(self, insn: ida_ua.insn_t, next: ida_ua.insn_t) -> int:
+        if insn.ea in self.branch_targets:
+            targets = self.branch_targets[insn.ea]
+            for target_block in targets.values():
+                target_va = target_block['end_offset']
+                ida_xref.add_cref(insn.ea, target_va, ida_xref.fl_JF)
+
+        return 1
+
     def notify_emu_RETURN_END(self, insn: ida_ua.insn_t, next: ida_ua.insn_t) -> int:
         # the RETURN will fallthrough to END,
         ida_xref.add_cref(insn.ea, insn.ea + insn.size, ida_xref.fl_F)
@@ -678,6 +701,12 @@ class wasm_processor_t(ida_idp.processor_t):
         self.deferred_noflows[next.ea] = True
 
         return 1
+
+    def notify_emu_UNREACHABLE_END(self, insn: ida_ua.insn_t, next: ida_ua.insn_t) -> int:
+        # but the END will not fallthrough.
+        self.deferred_noflows[next.ea] = True
+
+        return 0
 
     def notify_emu_BR(self, insn: ida_ua.insn_t) -> int:
         # handle an unconditional branch not at the end of a black.
@@ -867,8 +896,8 @@ class wasm_processor_t(ida_idp.processor_t):
             elif insn.itype == self.itype_BR_IF:
                 return self.notify_emu_BR_IF_END(insn, next)
 
-            elif insn.itype in (self.itype_BR_TABLE,):
-                raise NotImplementedError('br table')
+            elif insn.itype == self.itype_BR_TABLE:
+                return self.notify_emu_BR_TABLE_END(insn, next)
 
         # handle cases like:
         #
@@ -881,6 +910,26 @@ class wasm_processor_t(ida_idp.processor_t):
               and next is not None
               and next.itype == self.itype_END):
             return self.notify_emu_RETURN_END(insn, next)
+
+        # handle cases like:
+        #
+        #     ...
+        #     unreachable
+        #     end
+        elif (insn.itype == self.itype_UNREACHABLE
+              and next is not None
+              and next.itype == self.itype_END):
+            return self.notify_emu_UNREACHABLE_END(insn, next)
+
+        # handle cases like:
+        #
+        #     ...
+        #     br $foo
+        #     unreachable
+        elif (insn.itype == self.itype_BR
+              and next is not None
+              and next.itype == self.itype_UNREACHABLE):
+            return 1
 
         # handle other RETURN and UNREACHABLE instructions.
         # tbh, not sure how we'd encounter another RETURN, but we'll be safe.
@@ -1053,6 +1102,30 @@ class wasm_processor_t(ida_idp.processor_t):
                 ctx.out_value(op, ida_ua.OOFW_IMM | width)
                 return True
 
+            elif wtype == WASM_BRANCH_TABLE:
+                # output a branch table.
+                #
+                # eg.
+                #
+                #     code:XXXX   br_table    3, [0,1,2], default:0
+                #                                  ^
+                #                                 this thing
+                branch_table = self._render_branch_table(op.addr)
+                ctx.out_keyword(branch_table)
+                return True
+
+            elif wtype == WASM_BRANCH_TABLE_DEFAULT:
+                # output a default branch target.
+                #
+                # eg.
+                #
+                #     code:XXXX   br_table    3, [0,1,2], default:0
+                #                                           ^
+                #                                          this thing
+                ctx.out_keyword('default:')
+                ctx.out_long(op.value, 10)
+                return True
+
             else:
                 width = self.dt_to_width(op.dtype)
                 ctx.out_value(op, ida_ua.OOFW_IMM | width)
@@ -1152,6 +1225,17 @@ class wasm_processor_t(ida_idp.processor_t):
         ctx.set_gen_cmt()
         ctx.flush_outbuf()
 
+    def _decode_bytecode_at(self, addr: int) -> Instruction:
+        for i in range(1, 5):
+            try:
+                buf = ida_bytes.get_bytes(addr, 0x10 ** i)
+                bc = next(wasm.decode_bytecode(buf))
+                return bc
+            except:  # NOQA: E722 do not use bare 'except'
+                pass
+
+        raise RuntimeError('could not decode bytecode')
+
     @ida_entry_point
     def ev_ana_insn(self, insn: ida_ua.insn_t) -> int:
         """
@@ -1179,17 +1263,7 @@ class wasm_processor_t(ida_idp.processor_t):
         if wasm.opcodes.OPCODE_MAP.get(opb).imm_struct:
             # opcode has operands that we must decode
 
-            bc = None
-            for i in range(1, 5):
-                try:
-                    buf = ida_bytes.get_bytes(insn.ea, 0x10 ** i)
-                    bc = next(wasm.decode_bytecode(buf))
-                    break
-                except:  # NOQA: E722 do not use bare 'except'
-                    pass
-
-            if bc is None:
-                raise RuntimeError('could not decode bytecode')
+            bc = self._decode_bytecode_at(insn.ea)
         else:
             # single byte instruction
 
@@ -1252,12 +1326,15 @@ class wasm_processor_t(ida_idp.processor_t):
                 insn.Op2.type = ida_ua.o_imm
                 insn.Op2.flags = SHOW_FLAGS
                 insn.Op2.dtype = ida_ua.dt_dword
-                insn.Op2.value = bc.imm.target_table
+                # save instruction address for rendering branch table
+                insn.Op2.addr = insn.ea
+                insn.Op2.specval = WASM_BRANCH_TABLE
 
                 insn.Op3.type = ida_ua.o_imm
                 insn.Op3.flags = SHOW_FLAGS
                 insn.Op3.dtype = ida_ua.dt_dword
                 insn.Op3.value = bc.imm.default_target
+                insn.Op3.specval = WASM_BRANCH_TABLE_DEFAULT
 
             # call
             elif immtype == wasm.immtypes.CallImm:
