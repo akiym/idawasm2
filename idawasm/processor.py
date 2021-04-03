@@ -1222,11 +1222,6 @@ class wasm_processor_t(ida_idp.processor_t):
 
             SHOW_FLAGS = ida_ua.OF_NO_BASE_DISP | ida_ua.OF_NUMBER | ida_ua.OF_SHOW
 
-            # wasm is currently single-byte opcode only
-            # therefore the first operand must be found at offset 0x1.
-            insn.Op1.offb = 1
-            insn.Op1.offo = 1
-
             # by default, display the operand, unless overridden below.
             insn.Op1.flags = SHOW_FLAGS
 
@@ -1255,15 +1250,11 @@ class wasm_processor_t(ida_idp.processor_t):
                 insn.Op1.value = bc.imm.target_count
 
                 insn.Op2.type = ida_ua.o_imm
-                insn.Op2.offb = 1  # TODO(wb): fixup offset of Op2
-                insn.Op2.offo = 1  # TODO(wb): fixup offset of Op2
                 insn.Op2.flags = SHOW_FLAGS
                 insn.Op2.dtype = ida_ua.dt_dword
                 insn.Op2.value = bc.imm.target_table
 
                 insn.Op3.type = ida_ua.o_imm
-                insn.Op3.offb = 1  # TODO(wb): fixup offset of Op3
-                insn.Op3.offo = 1  # TODO(wb): fixup offset of Op3
                 insn.Op3.flags = SHOW_FLAGS
                 insn.Op3.dtype = ida_ua.dt_dword
                 insn.Op3.value = bc.imm.default_target
@@ -1286,8 +1277,6 @@ class wasm_processor_t(ida_idp.processor_t):
                 insn.Op1.specval = WASM_TYPE_INDEX
 
                 insn.Op2.type = ida_ua.o_imm
-                insn.Op2.offb = 1  # TODO(wb): fixup offset of Op2
-                insn.Op2.offo = 1  # TODO(wb): fixup offset of Op2
                 insn.Op2.flags = SHOW_FLAGS
                 insn.Op2.dtype = ida_ua.dt_dword
                 insn.Op2.value = bc.imm.reserved
@@ -1316,8 +1305,6 @@ class wasm_processor_t(ida_idp.processor_t):
                 insn.Op1.value = bc.imm.offset
 
                 insn.Op2.type = ida_ua.o_imm
-                insn.Op2.offb = 1  # TODO(wb): fixup offset of Op2
-                insn.Op2.offo = 1  # TODO(wb): fixup offset of Op2
                 insn.Op2.flags = SHOW_FLAGS
                 insn.Op2.dtype = ida_ua.dt_dword
                 insn.Op2.value = bc.imm.flags
