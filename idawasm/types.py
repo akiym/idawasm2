@@ -34,3 +34,10 @@ class Block(TypedDict):
     depth: int
     # "block", "loop", "if", "function"
     type: str
+
+
+class Global(TypedDict):
+    index: int
+    offset: int
+    type: str
+    name: str

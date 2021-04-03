@@ -20,7 +20,7 @@ from wasm.decode import Instruction, ModuleFragment
 import idawasm.analysis.llvm
 import idawasm.const
 from idawasm.common import offset_of, size_of, struc_to_dict
-from idawasm.types import Block, Function
+from idawasm.types import Block, Function, Global
 
 logger = logging.getLogger(__name__)
 
@@ -322,29 +322,85 @@ class wasm_processor_t(ida_idp.processor_t):
         type_section = self._get_section(wasm.wasmtypes.SEC_TYPE)
         return struc_to_dict(type_section.data.payload.entries)
 
-    def _parse_globals(self) -> dict[int, dict[str, Any]]:
+    def _parse_imported_globals(self) -> dict[int, Global]:
+        """
+        parse the import entries for globals.
+        """
+        globals_: dict[int, Global] = {}
+        import_section = self._get_section(wasm.wasmtypes.SEC_IMPORT)
+        pimport_section = self._get_section_offset(wasm.wasmtypes.SEC_IMPORT)
+
+        ppayload = pimport_section + offset_of(import_section.data, 'payload')
+        pentries = ppayload + offset_of(import_section.data.payload, 'entries')
+        pcur = pentries
+        i = 0
+        for body in import_section.data.payload.entries:
+            if body.kind == idawasm.const.WASM_EXTERNAL_KIND_GLOBAL:
+                ctype = idawasm.const.WASM_TYPE_NAMES[body.type.content_type]
+                module = body.module_str.tobytes().decode('utf-8')
+                field = body.field_str.tobytes().decode('utf-8')
+                globals_[i] = {
+                    'index': i,
+                    'offset': pcur,
+                    'type': ctype,
+                    'name': f'{module}.{field}',
+                }
+
+                i += 1
+            pcur += size_of(body)
+
+        return globals_
+
+    def _parse_globals(self) -> dict[int, Global]:
         """
         parse the global entries.
 
         Returns:
-          dict[int, dict[str, any]]: from global index to dict with keys `offset` and `type`.
+          dict[int, Global]: from global index to dict with keys `offset` and `type`.
         """
-        globals_ = {}
+        globals_: dict[int, Global] = {}
+
+        globals_.update(self._parse_imported_globals())
+
         global_section = self._get_section(wasm.wasmtypes.SEC_GLOBAL)
         pglobal_section = self._get_section_offset(wasm.wasmtypes.SEC_GLOBAL)
 
         ppayload = pglobal_section + offset_of(global_section.data, 'payload')
         pglobals = ppayload + offset_of(global_section.data.payload, 'globals')
         pcur = pglobals
-        for i, body in enumerate(global_section.data.payload.globals):
+        i = len(globals_)
+        for body in global_section.data.payload.globals:
             pinit = pcur + offset_of(body, 'init')
             ctype = idawasm.const.WASM_TYPE_NAMES[body.type.content_type]
+
+            name = 'global_%X' % i
+
+            # get name from imported global in a case like:
+            # 02FA sections:6:payload:globals:3:init
+            # 02FA
+            # 02FA _env_STACKTOP:
+            # 02FA                 get_global          env_STACKTOP
+            # 02FC                 end
+            if len(body.init) > 0:
+                bc = body.init[0]
+                if bc.op.id == wasm.OP_GET_GLOBAL:
+                    global_index = bc.imm.global_index
+                    if global_index in globals_:
+                        name = '_' + globals_[global_index]['name']
+
             globals_[i] = {
                 'index': i,
                 'offset': pinit,
                 'type': ctype,
+                'name': name,
             }
+
+            i += 1
             pcur += size_of(body)
+
+        for global_ in globals_.values():
+            ida_name.set_name(global_['offset'], global_['name'], ida_name.SN_CHECK)
+
         return globals_
 
     def _parse_imported_functions(self) -> dict[int, dict[str, Any]]:
@@ -1509,7 +1565,7 @@ class wasm_processor_t(ida_idp.processor_t):
         # map from (va-start, va-end) to function object
         self.function_ranges = {}
         # map from global index to global object
-        self.globals = {}
+        self.globals: dict[int, Global] = {}
         # map from va to map from relative depth to va
         self.branch_targets: dict[int, dict[str, Block]] = {}
         # list of type descriptors

@@ -195,20 +195,7 @@ def load_globals_section(section: ModuleFragment, p: int) -> None:
     pglobals = ppayload + offset_of(section.data.payload, 'globals')
     pcur = pglobals
     for i, body in enumerate(section.data.payload.globals):
-        gname = 'global_%X' % i
-        # we need a target that people can rename.
-        # so lets map `global_N` to the init expr field.
-        # this will look like:
-        #
-        #     global_0        <---- named address we can reference
-        #     global_0_init:  <---- fake label line
-        #        i32.const    <---- init expression insns
-        #        ret
-        pinit = pcur + offset_of(body, 'init')
-        ida_name.set_name(pinit, gname, ida_name.SN_CHECK)
-        ida_lines.update_extra_cmt(pinit, ida_lines.E_PREV + 0, gname + '_init:')
-        ida_ua.create_insn(pinit)
-
+        ida_ua.create_insn(pcur + offset_of(body, 'init'))
         pcur += size_of(body)
 
 
