@@ -278,8 +278,7 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
         if function['size'] <= self.PROLOGUE_SIZE:
             return False
 
-        prologue = ida_bytes.get_bytes(function['offset'], self.PROLOGUE_SIZE)
-        prologue_bc = list(itertools.islice(wasm.decode.decode_bytecode(prologue), 8))
+        prologue_bc = self.get_prologue_bc(function['offset'])
         prologue_mnems = list(map(lambda bc: bc.op.id, prologue_bc))
 
         # pattern match on the LLVM function prologue.
@@ -316,8 +315,9 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
         if not self.has_llvm_prologue(function):
             return
 
-        buf = ida_bytes.get_bytes(function['offset'], self.PROLOGUE_SIZE)
-        bc = list(itertools.islice(wasm.decode.decode_bytecode(buf), 8))
+        bc = self.get_prologue_bc(function['offset'])
+        if len(bc) == 0:
+            return
 
         global_frame_pointer = bc[0].imm.global_index
         frame_size = bc[2].imm.value
@@ -402,3 +402,10 @@ class LLVMAnalyzer(idawasm.analysis.Analyzer):
         """
         for function in functions.values():
             self.analyze_function_frame(function)
+
+    def get_prologue_bc(self, offset: int) -> list[Instruction]:
+        prologue = ida_bytes.get_bytes(offset, self.PROLOGUE_SIZE)
+        try:
+            return list(itertools.islice(wasm.decode_bytecode(prologue), 8))
+        except:  # NOQA: E722 do not use bare 'except'
+            return []
