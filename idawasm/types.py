@@ -41,3 +41,11 @@ class Global(TypedDict):
     offset: int
     type: str
     name: str
+
+
+class Data(TypedDict):
+    index: int
+    offset: int
+    ea: int
+    size: int
+    data: bytes

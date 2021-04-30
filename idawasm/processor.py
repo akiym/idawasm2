@@ -20,7 +20,7 @@ from wasm.decode import Instruction, ModuleFragment
 import idawasm.analysis.llvm
 import idawasm.const
 from idawasm.common import offset_of, size_of, struc_to_dict
-from idawasm.types import Block, Function, Global
+from idawasm.types import Block, Data, Function, Global
 
 logger = logging.getLogger(__name__)
 
@@ -515,6 +515,38 @@ class wasm_processor_t(ida_idp.processor_t):
 
         return functions
 
+    def _parse_data(self) -> dict[int, Data]:
+        data: dict[int, Data] = {}
+        data_section = self._get_section(wasm.wasmtypes.SEC_DATA)
+        pdata_section = self._get_section_offset(wasm.wasmtypes.SEC_DATA)
+
+        ppayload = pdata_section + offset_of(data_section.data, 'payload')
+        pentries = ppayload + offset_of(data_section.data.payload, 'entries')
+        pcur = pentries
+        i = 0
+        for entry in data_section.data.payload.entries:
+            ea = pcur + size_of(entry, 'index') \
+                 + size_of(entry, 'offset') \
+                 + size_of(entry, 'size')
+            offset = 0
+            if len(entry.offset) > 0:
+                bc = entry.offset[0]
+                if bc.op.id == wasm.OP_I32_CONST:
+                    offset = bc.imm.value
+
+            data[i] = {
+                'index': i,
+                'offset': offset,
+                'ea': ea,
+                'size': entry.size,
+                'data': entry.data.tobytes(),
+            }
+
+            i += 1
+            pcur += size_of(entry)
+
+        return data
+
     def _render_type(self, type_, name=None):
         if name is None:
             name = ''
@@ -603,6 +635,12 @@ class wasm_processor_t(ida_idp.processor_t):
             for f in self.functions.values()
             if 'offset' in f
         }
+
+        logger.info('parsing data')
+        try:
+            self.data = self._parse_data()
+        except SectionNotFoundError as e:
+            logger.info(f'failed to parse data: {e}')
 
         logger.info('computing branch targets')
         self.branch_targets = self._compute_branch_targets()
@@ -922,6 +960,14 @@ class wasm_processor_t(ida_idp.processor_t):
                 ida_xref.add_dref(insn.ea, global_va, ida_xref.dr_R)
             else:
                 raise RuntimeError('unexpected instruction referencing global: ' + str(insn))
+
+        # add drefs to data
+        for op in insn.ops:
+            if op.type == ida_ua.o_imm and op.dtype == ida_ua.dt_dword:
+                va = op.value
+                for data in self.data.values():
+                    if data['offset'] <= va <= data['offset'] + data['size']:
+                        ida_xref.add_dref(insn.ea, va - data['offset'] + data['ea'], ida_xref.dr_R)
 
         # TODO: add drefs to memory, but need example of this first.
 
@@ -1566,6 +1612,8 @@ class wasm_processor_t(ida_idp.processor_t):
         self.function_ranges = {}
         # map from global index to global object
         self.globals: dict[int, Global] = {}
+        # map from data index to data object
+        self.data: dict[int, Data] = {}
         # map from va to map from relative depth to va
         self.branch_targets: dict[int, dict[str, Block]] = {}
         # list of type descriptors
